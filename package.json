@@ -1,0 +1,12 @@
+{
+  "name": "plantcher-word-server",
+  "version": "1.0.0",
+  "description": "Servidor para generar documentos Word de Plantcher",
+  "main": "servidor_word_final.py",
+  "scripts": {
+    "start": "python servidor_word_final.py"
+  },
+  "engines": {
+    "python": "3.11.0"
+  }
+}
