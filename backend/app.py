@@ -83,10 +83,13 @@ def format_table_content(table):
 MODALIDADES_CONFIG = {
     'abj': ['Planteamiento del Juego', 'Desarrollo de las Actividades', 'Compartamos la Experiencia', 'Comunidad de Juego'],
     'centros': ['Inicio', 'Desarrollo', 'Cierre'],
+    'centros de interes': ['Inicio', 'Desarrollo', 'Cierre'],
     'talleres': ['Inicio', 'Desarrollo', 'Cierre'],
     'rincones': ['Inicio', 'Desarrollo', 'Cierre'],
+    'rincones de aprendizaje': ['Inicio', 'Desarrollo', 'Cierre'],
     'proyecto': ['Problematización', 'Desarrollo del Proyecto', 'Comunicación', 'Integración', 'Reflexión'],
-    'unidad': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración']
+    'unidad': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración'],
+    'unidad didactica': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración']
 }
 
 @app.route('/', methods=['GET'])
@@ -129,7 +132,11 @@ def generar_word():
         
         modalidad = data.get('modalidad', '').lower()
         
+        logger.info(f"Modalidad recibida: '{modalidad}'")
+        logger.info(f"Modalidades disponibles: {list(MODALIDADES_CONFIG.keys())}")
+        
         if modalidad not in MODALIDADES_CONFIG:
+            logger.error(f"Modalidad '{modalidad}' no encontrada")
             return jsonify({
                 "error": f"Modalidad '{modalidad}' no válida",
                 "modalidades_disponibles": list(MODALIDADES_CONFIG.keys())
@@ -215,6 +222,9 @@ def generar_word():
         momentos = data.get('momentos', {})
         momentos_modalidad = MODALIDADES_CONFIG.get(modalidad, ['Inicio', 'Desarrollo', 'Cierre'])
         
+        logger.info(f"Momentos recibidos: {list(momentos.keys())}")
+        logger.info(f"Momentos esperados para {modalidad}: {momentos_modalidad}")
+        
         table3 = doc.add_table(rows=len(momentos_modalidad) + 1, cols=2)
         
         # Headers
@@ -224,7 +234,30 @@ def generar_word():
         # Datos específicos por modalidad
         for idx, momento in enumerate(momentos_modalidad, start=1):
             table3.rows[idx].cells[0].text = momento
-            table3.rows[idx].cells[1].text = momentos.get(momento, '')
+            # Buscar la descripción del momento con diferentes variaciones
+            descripcion = ''
+            # Buscar por nombre exacto
+            if momento in momentos:
+                descripcion = momentos[momento]
+            # Buscar por nombre sin espacios ni mayúsculas
+            elif momento.lower().replace(' ', '') in [k.lower().replace(' ', '') for k in momentos.keys()]:
+                for k, v in momentos.items():
+                    if k.lower().replace(' ', '') == momento.lower().replace(' ', ''):
+                        descripcion = v
+                        break
+            # Si no encuentra, buscar por palabras clave
+            elif not descripcion:
+                momento_lower = momento.lower()
+                for k, v in momentos.items():
+                    k_lower = k.lower()
+                    if (momento_lower in k_lower) or (k_lower in momento_lower):
+                        descripcion = v
+                        break
+            
+            table3.rows[idx].cells[1].text = descripcion
+            
+            # Log para debugging
+            logger.info(f"Momento: '{momento}' -> Descripción: '{descripcion[:50]}...' (encontrada: {bool(descripcion)})")
         
         set_table_borders(table3)
         format_table_headers(table3)
