@@ -81,15 +81,17 @@ def format_table_content(table):
 
 # Configuración de momentos para cada modalidad
 MODALIDADES_CONFIG = {
-    'abj': ['Planteamiento del Juego', 'Desarrollo de las Actividades', 'Compartamos la Experiencia', 'Comunidad de Juego'],
+    'abj': ['planteamiento_juego', 'desarrollo_actividades', 'compartamos_experiencia', 'comunidad_juego'],
     'centros': ['Inicio', 'Desarrollo', 'Cierre'],
     'centros de interes': ['Inicio', 'Desarrollo', 'Cierre'],
+    'centros de interés': ['Inicio', 'Desarrollo', 'Cierre'],  # Con acento
     'talleres': ['Inicio', 'Desarrollo', 'Cierre'],
     'rincones': ['Inicio', 'Desarrollo', 'Cierre'],
     'rincones de aprendizaje': ['Inicio', 'Desarrollo', 'Cierre'],
     'proyecto': ['Problematización', 'Desarrollo del Proyecto', 'Comunicación', 'Integración', 'Reflexión'],
     'unidad': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración'],
-    'unidad didactica': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración']
+    'unidad didactica': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración'],
+    'unidad didáctica': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración']  # Con acento
 }
 
 @app.route('/', methods=['GET'])
