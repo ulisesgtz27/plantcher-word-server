@@ -82,16 +82,16 @@ def format_table_content(table):
 # Configuración de momentos para cada modalidad
 MODALIDADES_CONFIG = {
     'abj': ['planteamiento_juego', 'desarrollo_actividades', 'compartamos_experiencia', 'comunidad_juego'],
-    'centros': ['inicio', 'desarrollo', 'cierre'],
-    'centros de interes': ['inicio', 'desarrollo', 'cierre'],
-    'centros de interés': ['inicio', 'desarrollo', 'cierre'],
-    'talleres': ['inicio', 'desarrollo', 'cierre'],
-    'rincones': ['inicio', 'desarrollo', 'cierre'],
+    'centros': ['contacto_realidad', 'identificacion_integracion', 'expresion'],
+    'centros de interes': ['contacto_realidad', 'identificacion_integracion', 'expresion'],
+    'centros de interés': ['contacto_realidad', 'identificacion_integracion', 'expresion'],
+    'talleres': ['situacion_inicial', 'organizacion_acciones', 'puesta_marcha', 'valoramos_aprendido'],
+    'rincones': ['punto_partida', 'asamblea_inicial', 'exploracion_rincones', 'exploracion_descubrimiento', 'compartimos_aprendido', 'evaluamos_experiencia'],
     'rincones de aprendizaje': ['punto_partida', 'asamblea_inicial', 'exploracion_rincones', 'exploracion_descubrimiento', 'compartimos_aprendido', 'evaluamos_experiencia'],
     'proyecto': ['problematizacion', 'desarrollo_proyecto', 'comunicacion', 'integracion', 'reflexion'],
-    'unidad': ['inicio', 'desarrollo', 'cierre', 'transversalidad', 'reflexion', 'conclusion_valoracion'],
-    'unidad didactica': ['inicio', 'desarrollo', 'cierre', 'transversalidad', 'reflexion', 'conclusion_valoracion'],
-    'unidad didáctica': ['inicio', 'desarrollo', 'cierre', 'transversalidad', 'reflexion', 'conclusion_valoracion']
+    'unidad': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion'],
+    'unidad didactica': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion'],
+    'unidad didáctica': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion']
 }
 
 @app.route('/', methods=['GET'])
