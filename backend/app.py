@@ -36,26 +36,28 @@ def after_request(response):
     return response
 
 def set_table_borders(table):
-    """Establecer bordes para todas las celdas de la tabla"""
+    """Aplica bordes negros a toda la tabla"""
     tbl = table._tbl
-    for row in tbl.tr_lst:
-        for cell in row.tc_lst:
-            tcPr = cell.tcPr
-            if tcPr is None:
-                tcPr = OxmlElement('w:tcPr')
-                cell.append(tcPr)
-            
-            # Añadir bordes
-            tcBorders = OxmlElement('w:tcBorders')
-            for border_name in ['top', 'left', 'bottom', 'right']:
-                border = OxmlElement(f'w:{border_name}')
-                border.set(qn('w:val'), 'single')
-                border.set(qn('w:sz'), '4')
-                border.set(qn('w:space'), '0')
-                border.set(qn('w:color'), '000000')
-                tcBorders.append(border)
-            
-            tcPr.append(tcBorders)
+    tblPr = tbl.tblPr
+    
+    # Crear elemento de bordes
+    tblBorders = OxmlElement('w:tblBorders')
+    
+    # Definir todos los bordes (top, left, bottom, right, insideH, insideV)
+    border_types = ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']
+    
+    for border_type in border_types:
+        border = OxmlElement(f'w:{border_type}')
+        border.set(qn('w:val'), 'single')  # Tipo de línea
+        border.set(qn('w:sz'), '4')        # Grosor (4 = 0.5pt)
+        border.set(qn('w:space'), '0')     # Espaciado
+        border.set(qn('w:color'), '000000') # Color negro
+        tblBorders.append(border)
+    
+    tblPr.append(tblBorders)
+    
+    # Centrar tabla
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
 def format_table_headers(table):
     """Formatea los headers en negrita y centrados"""
@@ -79,62 +81,13 @@ def format_table_content(table):
 
 # Configuración de momentos para cada modalidad
 MODALIDADES_CONFIG = {
-    'abj': ['Inicio', 'Desarrollo', 'Cierre'],
+    'abj': ['Planteamiento del Juego', 'Desarrollo de las Actividades', 'Compartamos la Experiencia', 'Comunidad de Juego'],
     'centros': ['Inicio', 'Desarrollo', 'Cierre'],
     'talleres': ['Inicio', 'Desarrollo', 'Cierre'],
     'rincones': ['Inicio', 'Desarrollo', 'Cierre'],
     'proyecto': ['Problematización', 'Desarrollo del Proyecto', 'Comunicación', 'Integración', 'Reflexión'],
     'unidad': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración']
 }
-
-def crear_tabla_principal():
-    """Crear la tabla principal del documento"""
-    tabla_principal = [
-        ["Campos Formativos", "Contenidos", "Procesos de Desarrollo de Aprendizaje"],
-        ["", "", ""],
-        ["", "", ""],
-        ["", "", ""]
-    ]
-    return tabla_principal
-
-def crear_tabla_periodo_proposito():
-    """Crear tabla de período y propósito"""
-    tabla_periodo = [
-        ["Período de realización", "Propósito"],
-        ["", ""]
-    ]
-    return tabla_periodo
-
-def crear_tabla_momentos(modalidad):
-    """Crear tabla de momentos según la modalidad"""
-    momentos = MODALIDADES_CONFIG.get(modalidad, ['Inicio', 'Desarrollo', 'Cierre'])
-    
-    tabla_momentos = [["Momentos", "Situaciones de Aprendizaje", "Recursos", "Tiempo"]]
-    
-    for momento in momentos:
-        tabla_momentos.append([momento, "", "", ""])
-    
-    return tabla_momentos
-
-def crear_tabla_evaluacion():
-    """Crear tabla de evaluación"""
-    tabla_evaluacion = [
-        ["Aspectos a Evaluar", "Técnicas", "Instrumentos"],
-        ["", "", ""],
-        ["", "", ""],
-        ["", "", ""]
-    ]
-    return tabla_evaluacion
-
-def crear_tabla_bibliografia():
-    """Crear tabla de bibliografía"""
-    tabla_bibliografia = [
-        ["Bibliografía"],
-        [""],
-        [""],
-        [""]
-    ]
-    return tabla_bibliografia
 
 @app.route('/', methods=['GET'])
 def home():
@@ -167,7 +120,7 @@ def get_modalidades():
 
 @app.route('/generar-word', methods=['POST'])
 def generar_word():
-    """Generar documento Word con la plantilla ABJ"""
+    """Generar documento Word con la plantilla ABJ manteniendo estructura original"""
     try:
         data = request.get_json()
         
@@ -186,103 +139,132 @@ def generar_word():
         doc = Document()
         
         # Título principal
-        titulo = doc.add_heading('PLANTILLA DIDÁCTICA', 0)
-        titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title = doc.add_heading(f"Planeación {modalidad.upper()}: {data.get('titulo', '')}", 0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
-        # Subtítulo con modalidad
-        modalidad_upper = modalidad.upper()
-        subtitulo = doc.add_heading(f'{modalidad_upper}', 1)
-        subtitulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        doc.add_paragraph("")
+
+        # === TABLA 1: DATOS GENERALES ===
+        table1 = doc.add_table(rows=2, cols=3)
         
-        # 1. Tabla Principal (Campos Formativos, Contenidos, Procesos)
-        doc.add_heading('1. INFORMACIÓN CURRICULAR', 2)
-        tabla_principal_data = crear_tabla_principal()
-        tabla_principal = doc.add_table(rows=len(tabla_principal_data), cols=len(tabla_principal_data[0]))
-        tabla_principal.style = 'Table Grid'
-        tabla_principal.alignment = WD_TABLE_ALIGNMENT.CENTER
+        # Headers
+        headers1 = ['Periodo de Aplicación', 'Propósito', 'Relevancia Social']
+        for i, header in enumerate(headers1):
+            table1.rows[0].cells[i].text = header
         
-        for i, row_data in enumerate(tabla_principal_data):
-            for j, cell_data in enumerate(row_data):
-                tabla_principal.cell(i, j).text = cell_data
+        # Datos
+        row1_data = [
+            data.get('periodoAplicacion', ''),
+            data.get('proposito', ''),
+            data.get('relevanciaSocial', '')
+        ]
+        for i, dato in enumerate(row1_data):
+            table1.rows[1].cells[i].text = dato
         
-        set_table_borders(tabla_principal)
-        format_table_headers(tabla_principal)
-        format_table_content(tabla_principal)
+        set_table_borders(table1)
+        format_table_headers(table1)
+        format_table_content(table1)
+        doc.add_paragraph("")
+
+        # === TABLA 2: CONTENIDO CURRICULAR ===
+        campos = data.get('camposFormativos', [])
+        contenidos = data.get('contenidos', [])
+        procesos = data.get('procesosDesarrollo', [])
+        relaciones = data.get('relacionContenidos', {})
         
-        doc.add_paragraph()
+        max_rows = max(len(campos), len(contenidos), len(procesos))
+        table2 = doc.add_table(rows=max_rows + 1, cols=5)
         
-        # 2. Tabla de Período y Propósito
-        doc.add_heading('2. PERÍODO Y PROPÓSITO', 2)
-        tabla_periodo_data = crear_tabla_periodo_proposito()
-        tabla_periodo = doc.add_table(rows=len(tabla_periodo_data), cols=len(tabla_periodo_data[0]))
-        tabla_periodo.style = 'Table Grid'
-        tabla_periodo.alignment = WD_TABLE_ALIGNMENT.CENTER
+        # Headers
+        headers2 = ['Campos Formativos', 'Contenidos', 'Procesos de Desarrollo', 'Relación de Contenidos', 'Eje Articulador']
+        for i, header in enumerate(headers2):
+            table2.rows[0].cells[i].text = header
         
-        for i, row_data in enumerate(tabla_periodo_data):
-            for j, cell_data in enumerate(row_data):
-                tabla_periodo.cell(i, j).text = cell_data
+        # Datos
+        for i in range(max_rows):
+            campo = campos[i] if i < len(campos) else ''
+            contenido = contenidos[i] if i < len(contenidos) else ''
+            
+            # Procesos
+            procesos_str = ''
+            if procesos and i < len(procesos):
+                campo_proc = procesos[i]
+                gradosPorContenido = campo_proc.get('gradosPorContenido', {})
+                for cont, grados in gradosPorContenido.items():
+                    procesos_str += f"{cont}\n"
+                    for grado, elementos in grados.items():
+                        procesos_str += f"  Grado {grado}:\n"
+                        for el in elementos:
+                            procesos_str += f"    • {el}\n"
+            
+            relacion = relaciones.get(campo, '') if campo in relaciones else ''
+            eje = data.get('ejeArticulador', '') if i == 0 else ''
+            
+            table2.rows[i + 1].cells[0].text = campo
+            table2.rows[i + 1].cells[1].text = contenido
+            table2.rows[i + 1].cells[2].text = procesos_str.strip()
+            table2.rows[i + 1].cells[3].text = relacion
+            table2.rows[i + 1].cells[4].text = eje
         
-        set_table_borders(tabla_periodo)
-        format_table_headers(tabla_periodo)
-        format_table_content(tabla_periodo)
+        set_table_borders(table2)
+        format_table_headers(table2)
+        format_table_content(table2)
+        doc.add_paragraph("")
+
+        # === TABLA 3: MOMENTOS (Específicos por modalidad) ===
+        momentos = data.get('momentos', {})
+        momentos_modalidad = MODALIDADES_CONFIG.get(modalidad, ['Inicio', 'Desarrollo', 'Cierre'])
         
-        doc.add_paragraph()
+        table3 = doc.add_table(rows=len(momentos_modalidad) + 1, cols=2)
         
-        # 3. Tabla de Momentos (específica para cada modalidad)
-        doc.add_heading('3. MOMENTOS DIDÁCTICOS', 2)
-        tabla_momentos_data = crear_tabla_momentos(modalidad)
-        tabla_momentos = doc.add_table(rows=len(tabla_momentos_data), cols=len(tabla_momentos_data[0]))
-        tabla_momentos.style = 'Table Grid'
-        tabla_momentos.alignment = WD_TABLE_ALIGNMENT.CENTER
+        # Headers
+        table3.rows[0].cells[0].text = 'Momentos'
+        table3.rows[0].cells[1].text = 'Descripción'
         
-        for i, row_data in enumerate(tabla_momentos_data):
-            for j, cell_data in enumerate(row_data):
-                tabla_momentos.cell(i, j).text = cell_data
+        # Datos específicos por modalidad
+        for idx, momento in enumerate(momentos_modalidad, start=1):
+            table3.rows[idx].cells[0].text = momento
+            table3.rows[idx].cells[1].text = momentos.get(momento, '')
         
-        set_table_borders(tabla_momentos)
-        format_table_headers(tabla_momentos)
-        format_table_content(tabla_momentos)
+        set_table_borders(table3)
+        format_table_headers(table3)
+        format_table_content(table3)
+        doc.add_paragraph("")
+
+        # === TABLA 4: VARIANTES ===
+        table4 = doc.add_table(rows=2, cols=1)
+        table4.rows[0].cells[0].text = 'Posibles Variantes'
+        table4.rows[1].cells[0].text = data.get('posiblesVariantes', '')
         
-        doc.add_paragraph()
+        set_table_borders(table4)
+        format_table_headers(table4)
+        format_table_content(table4)
+        doc.add_paragraph("")
+
+        # === TABLA 5: RECURSOS ===
+        materiales = data.get('materiales', [])
+        espacios = data.get('espacios', [])
+        produccion = data.get('produccionSugerida', [])
         
-        # 4. Tabla de Evaluación
-        doc.add_heading('4. EVALUACIÓN', 2)
-        tabla_evaluacion_data = crear_tabla_evaluacion()
-        tabla_evaluacion = doc.add_table(rows=len(tabla_evaluacion_data), cols=len(tabla_evaluacion_data[0]))
-        tabla_evaluacion.style = 'Table Grid'
-        tabla_evaluacion.alignment = WD_TABLE_ALIGNMENT.CENTER
+        table5 = doc.add_table(rows=2, cols=3)
+        table5.rows[0].cells[0].text = 'Materiales'
+        table5.rows[0].cells[1].text = 'Espacios'
+        table5.rows[0].cells[2].text = 'Producción Sugerida'
         
-        for i, row_data in enumerate(tabla_evaluacion_data):
-            for j, cell_data in enumerate(row_data):
-                tabla_evaluacion.cell(i, j).text = cell_data
+        table5.rows[1].cells[0].text = '\n'.join(f'• {m}' for m in materiales)
+        table5.rows[1].cells[1].text = '\n'.join(f'• {e}' for e in espacios)
+        table5.rows[1].cells[2].text = '\n'.join(f'• {p}' for p in produccion)
         
-        set_table_borders(tabla_evaluacion)
-        format_table_headers(tabla_evaluacion)
-        format_table_content(tabla_evaluacion)
-        
-        doc.add_paragraph()
-        
-        # 5. Tabla de Bibliografía
-        doc.add_heading('5. BIBLIOGRAFÍA', 2)
-        tabla_bibliografia_data = crear_tabla_bibliografia()
-        tabla_bibliografia = doc.add_table(rows=len(tabla_bibliografia_data), cols=len(tabla_bibliografia_data[0]))
-        tabla_bibliografia.style = 'Table Grid'
-        tabla_bibliografia.alignment = WD_TABLE_ALIGNMENT.CENTER
-        
-        for i, row_data in enumerate(tabla_bibliografia_data):
-            for j, cell_data in enumerate(row_data):
-                tabla_bibliografia.cell(i, j).text = cell_data
-        
-        set_table_borders(tabla_bibliografia)
-        format_table_headers(tabla_bibliografia)
-        format_table_content(tabla_bibliografia)
-        
+        set_table_borders(table5)
+        format_table_headers(table5)
+        format_table_content(table5)
+
         # Guardar en memoria
         buffer = BytesIO()
         doc.save(buffer)
         buffer.seek(0)
         
-        filename = f"plantilla_{modalidad}.docx"
+        filename = f"planeacion_{modalidad}.docx"
         
         logger.info(f"Generando archivo para modalidad: {modalidad}")
         
