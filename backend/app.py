@@ -88,10 +88,53 @@ MODALIDADES_CONFIG = {
     'talleres': ['situacion_inicial', 'organizacion_acciones', 'puesta_marcha', 'valoramos_aprendido'],
     'rincones': ['punto_partida', 'asamblea_inicial', 'exploracion_rincones', 'exploracion_descubrimiento', 'compartimos_aprendido', 'evaluamos_experiencia'],
     'rincones de aprendizaje': ['punto_partida', 'asamblea_inicial', 'exploracion_rincones', 'exploracion_descubrimiento', 'compartimos_aprendido', 'evaluamos_experiencia'],
-    'proyecto': ['problematizacion', 'desarrollo_proyecto', 'comunicacion', 'integracion', 'reflexion'],
-    'unidad': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion'],
-    'unidad didactica': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion'],
-    'unidad didáctica': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion']
+    'proyecto': ['punto_partida', 'planeacion', 'a_trabajar', 'comunicamos_logros', 'reflexion_aprendizaje'],
+    'unidad': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion', 'participacion', 'conclusion'],
+    'unidad didactica': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion', 'participacion', 'conclusion'],
+    'unidad didáctica': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion', 'participacion', 'conclusion']
+}
+
+# Mapeo de nombres internos a nombres bonitos para mostrar en el Word
+NOMBRES_MOMENTOS = {
+    # ABJ
+    'planteamiento_juego': '1. Planteamiento del Juego',
+    'desarrollo_actividades': '2. Desarrollo de las Actividades', 
+    'compartamos_experiencia': '3. Compartamos la Experiencia',
+    'comunidad_juego': '4. Comunidad de Juego',
+    
+    # Centros de Interés
+    'contacto_realidad': '1. En contacto de la realidad',
+    'identificacion_integracion': '2. Identificación e integración',
+    'expresion': '3. Expresión',
+    
+    # Talleres
+    'situacion_inicial': '1. Situación inicial',
+    'organizacion_acciones': '2. Organización de las acciones',
+    'puesta_marcha': '3. Puesta en marcha',
+    'valoramos_aprendido': '4. Valoramos lo aprendido',
+    
+    # Rincones / Rincones de Aprendizaje
+    'punto_partida': '1. Punto de partida (Saberes previos)',
+    'asamblea_inicial': '2. Asamblea inicial y planeación',
+    'exploracion_rincones': '3. Exploración de los rincones',
+    'exploracion_descubrimiento': '4. Exploración y descubrimiento',
+    'compartimos_aprendido': '5. Compartimos lo aprendido',
+    'evaluamos_experiencia': '6. Evaluamos la experiencia',
+    
+    # Proyecto
+    'punto_partida': '1. Punto de partida',
+    'planeacion': '2. Planeación',
+    'a_trabajar': '3. ¡A trabajar!',
+    'comunicamos_logros': '4. Comunicamos nuestros logros',
+    'reflexion_aprendizaje': '5. Reflexión sobre el aprendizaje',
+    
+    # Unidad Didáctica
+    'lectura_realidad': '1. Lectura de la realidad',
+    'identificacion_trama': '2. Identificación de la trama y complejidad',
+    'planificacion': '3. Planificación y organización del trabajo',
+    'exploracion': '4. Exploración y descubrimiento',
+    'participacion': '5. Participación activa y horizontal',
+    'conclusion': '6. Conclusión de la experiencia (Valoración)'
 }
 
 @app.route('/', methods=['GET'])
@@ -235,7 +278,10 @@ def generar_word():
         
         # Datos específicos por modalidad
         for idx, momento in enumerate(momentos_modalidad, start=1):
-            table3.rows[idx].cells[0].text = momento
+            # Usar el nombre bonito del momento
+            nombre_bonito = NOMBRES_MOMENTOS.get(momento, momento.replace('_', ' ').title())
+            table3.rows[idx].cells[0].text = nombre_bonito
+            
             # Buscar la descripción del momento con diferentes variaciones
             descripcion = ''
             # Buscar por nombre exacto
@@ -259,7 +305,7 @@ def generar_word():
             table3.rows[idx].cells[1].text = descripcion
             
             # Log para debugging
-            logger.info(f"Momento: '{momento}' -> Descripción: '{descripcion[:50]}...' (encontrada: {bool(descripcion)})")
+            logger.info(f"Momento: '{momento}' -> Nombre: '{nombre_bonito}' -> Descripción: '{descripcion[:50] if descripcion else 'VACÍA'}...' (encontrada: {bool(descripcion)})")
         
         set_table_borders(table3)
         format_table_headers(table3)
