@@ -82,16 +82,16 @@ def format_table_content(table):
 # Configuración de momentos para cada modalidad
 MODALIDADES_CONFIG = {
     'abj': ['planteamiento_juego', 'desarrollo_actividades', 'compartamos_experiencia', 'comunidad_juego'],
-    'centros': ['Inicio', 'Desarrollo', 'Cierre'],
-    'centros de interes': ['Inicio', 'Desarrollo', 'Cierre'],
-    'centros de interés': ['Inicio', 'Desarrollo', 'Cierre'],  # Con acento
-    'talleres': ['Inicio', 'Desarrollo', 'Cierre'],
-    'rincones': ['Inicio', 'Desarrollo', 'Cierre'],
-    'rincones de aprendizaje': ['Inicio', 'Desarrollo', 'Cierre'],
-    'proyecto': ['Problematización', 'Desarrollo del Proyecto', 'Comunicación', 'Integración', 'Reflexión'],
-    'unidad': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración'],
-    'unidad didactica': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración'],
-    'unidad didáctica': ['Inicio', 'Desarrollo', 'Cierre', 'Transversalidad', 'Reflexión', 'Conclusión y Valoración']  # Con acento
+    'centros': ['inicio', 'desarrollo', 'cierre'],
+    'centros de interes': ['inicio', 'desarrollo', 'cierre'],
+    'centros de interés': ['inicio', 'desarrollo', 'cierre'],
+    'talleres': ['inicio', 'desarrollo', 'cierre'],
+    'rincones': ['inicio', 'desarrollo', 'cierre'],
+    'rincones de aprendizaje': ['punto_partida', 'asamblea_inicial', 'exploracion_rincones', 'exploracion_descubrimiento', 'compartimos_aprendido', 'evaluamos_experiencia'],
+    'proyecto': ['problematizacion', 'desarrollo_proyecto', 'comunicacion', 'integracion', 'reflexion'],
+    'unidad': ['inicio', 'desarrollo', 'cierre', 'transversalidad', 'reflexion', 'conclusion_valoracion'],
+    'unidad didactica': ['inicio', 'desarrollo', 'cierre', 'transversalidad', 'reflexion', 'conclusion_valoracion'],
+    'unidad didáctica': ['inicio', 'desarrollo', 'cierre', 'transversalidad', 'reflexion', 'conclusion_valoracion']
 }
 
 @app.route('/', methods=['GET'])
