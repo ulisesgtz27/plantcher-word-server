@@ -614,8 +614,6 @@ class OptionContenidoMultiBlock extends StatelessWidget {
               ...procesosPorCampo.entries.map((campoEntry) {
                 final campo = campoEntry.key;
                 final procesos = campoEntry.value;
-                final contenidos =
-                    procesos.map((p) => p['contenido'] as String).toList();
                 final contenidosSeleccionados =
                     contenidosSeleccionadosPorCampo[campo] ?? [];
                 final seleccionGrados = seleccionGradosPorCampo[campo] ?? {};
@@ -633,7 +631,9 @@ class OptionContenidoMultiBlock extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Column(
-                      children: contenidos.map((cont) {
+                      children: procesos.map((proceso) {
+                        final cont = proceso['contenido'] as String;
+                        
                         return CheckboxListTile(
                           title: Row(
                             children: [
@@ -641,13 +641,12 @@ class OptionContenidoMultiBlock extends StatelessWidget {
                                 child: Text(cont,
                                     maxLines: 2, overflow: TextOverflow.ellipsis),
                               ),
-                              if (cont.length > 60) // Solo mostrar botón si el texto es largo
-                                IconButton(
-                                  icon: const Icon(Icons.add_circle_outline, 
-                                      color: Colors.deepPurple, size: 20),
-                                  onPressed: () => onMostrarTextoCompleto?.call('Contenido', cont),
-                                  tooltip: 'Ver texto completo',
-                                ),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline, 
+                                    color: Colors.deepPurple, size: 20),
+                                onPressed: () => onMostrarTextoCompleto?.call('Contenido Completo', cont),
+                                tooltip: 'Ver texto completo',
+                              ),
                             ],
                           ),
                           value: contenidosSeleccionados.contains(cont),
@@ -743,22 +742,9 @@ class OptionContenidoMultiBlock extends StatelessWidget {
                                 ),
                                 ...elementos.map((el) {
                                   return CheckboxListTile(
-                                    title: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(el,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis),
-                                        ),
-                                        if (el.length > 60) // Solo mostrar botón si el texto es largo
-                                          IconButton(
-                                            icon: const Icon(Icons.add_circle_outline, 
-                                                color: Colors.deepPurple, size: 20),
-                                            onPressed: () => onMostrarTextoCompleto?.call('Elemento', el),
-                                            tooltip: 'Ver texto completo',
-                                          ),
-                                      ],
-                                    ),
+                                    title: Text(el,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis),
                                     value: seleccionados.contains(el),
                                     onChanged: (selected) {
                                       final nuevaLista =
