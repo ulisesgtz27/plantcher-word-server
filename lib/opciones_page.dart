@@ -59,6 +59,39 @@ class _OpcionesPageState extends State<OpcionesPage>
     });
   }
 
+  // Función para mostrar texto completo en un diálogo
+  void _mostrarTextoCompleto(String titulo, String texto) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            titulo,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.deepPurple,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Text(
+              texto,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cerrar',
+                style: TextStyle(color: Colors.deepPurple),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> cargarContenidosYProcesos(
       List<String> campusSeleccionados) async {
     setState(() {
@@ -283,6 +316,7 @@ class _OpcionesPageState extends State<OpcionesPage>
                         onBack: () {
                           setState(() => paso = 2);
                         },
+                        onMostrarTextoCompleto: _mostrarTextoCompleto,
                       )
                     : const SizedBox.shrink(),
               ),
@@ -551,6 +585,7 @@ class OptionContenidoMultiBlock extends StatelessWidget {
       onGradoChanged;
   final VoidCallback onContinue;
   final VoidCallback? onBack;
+  final void Function(String titulo, String texto)? onMostrarTextoCompleto;
 
   const OptionContenidoMultiBlock({
     super.key,
@@ -564,6 +599,7 @@ class OptionContenidoMultiBlock extends StatelessWidget {
     required this.onGradoChanged,
     required this.onContinue,
     this.onBack,
+    this.onMostrarTextoCompleto,
   });
 
   @override
@@ -599,8 +635,21 @@ class OptionContenidoMultiBlock extends StatelessWidget {
                     Column(
                       children: contenidos.map((cont) {
                         return CheckboxListTile(
-                          title: Text(cont,
-                              maxLines: 2, overflow: TextOverflow.ellipsis),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(cont,
+                                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                              ),
+                              if (cont.length > 60) // Solo mostrar botón si el texto es largo
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline, 
+                                      color: Colors.deepPurple, size: 20),
+                                  onPressed: () => onMostrarTextoCompleto?.call('Contenido', cont),
+                                  tooltip: 'Ver texto completo',
+                                ),
+                            ],
+                          ),
                           value: contenidosSeleccionados.contains(cont),
                           onChanged: (selected) {
                             final nuevaLista =
@@ -694,9 +743,22 @@ class OptionContenidoMultiBlock extends StatelessWidget {
                                 ),
                                 ...elementos.map((el) {
                                   return CheckboxListTile(
-                                    title: Text(el,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis),
+                                    title: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(el,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis),
+                                        ),
+                                        if (el.length > 60) // Solo mostrar botón si el texto es largo
+                                          IconButton(
+                                            icon: const Icon(Icons.add_circle_outline, 
+                                                color: Colors.deepPurple, size: 20),
+                                            onPressed: () => onMostrarTextoCompleto?.call('Elemento', el),
+                                            tooltip: 'Ver texto completo',
+                                          ),
+                                      ],
+                                    ),
                                     value: seleccionados.contains(el),
                                     onChanged: (selected) {
                                       final nuevaLista =
