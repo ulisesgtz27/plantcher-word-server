@@ -86,6 +86,8 @@ MODALIDADES_CONFIG = {
     'centros de interes': ['contacto_realidad', 'identificacion_integracion', 'expresion'],
     'centros de interés': ['contacto_realidad', 'identificacion_integracion', 'expresion'],
     'talleres': ['situacion_inicial', 'organizacion_acciones', 'puesta_marcha', 'valoramos_aprendido'],
+    'taller crítico': ['situacion_inicial', 'organizacion_acciones', 'puesta_marcha', 'valoramos_aprendido'],
+    'taller critico': ['situacion_inicial', 'organizacion_acciones', 'puesta_marcha', 'valoramos_aprendido'],
     'rincones': ['punto_partida', 'asamblea_inicial', 'exploracion_rincones', 'exploracion_descubrimiento', 'compartimos_aprendido', 'evaluamos_experiencia'],
     'rincones de aprendizaje': ['punto_partida', 'asamblea_inicial', 'exploracion_rincones', 'exploracion_descubrimiento', 'compartimos_aprendido', 'evaluamos_experiencia'],
     'proyecto': ['punto_partida', 'planeacion', 'a_trabajar', 'comunicamos_logros', 'reflexion_aprendizaje'],
