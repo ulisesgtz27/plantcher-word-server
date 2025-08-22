@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'main.dart';
+import 'opciones_page.dart';
+import 'detallar_abj_page.dart';
+import 'detallar_centros_page.dart';
+import 'detallar_taller.dart';
+import 'detallar_proyecto.dart';
+import 'detallar_unidad.dart';
+import 'detallar_rincones.dart';
 
 class PlaneacionesListPage extends StatefulWidget {
   const PlaneacionesListPage({super.key});
@@ -26,12 +32,41 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
+    
+    // Debug: Verificar datos del usuario
+    if (currentUser != null) {
+      _debugUserPlaneaciones();
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  // Método de debug para verificar las planeaciones del usuario
+  Future<void> _debugUserPlaneaciones() async {
+    try {
+      print('=== DEBUG PLANEACIONES ===');
+      print('Usuario actual: ${currentUser?.uid}');
+      
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('planeaciones')
+          .where('userId', isEqualTo: currentUser!.uid)
+          .get();
+      
+      print('Planeaciones encontradas: ${snapshot.docs.length}');
+      
+      for (var doc in snapshot.docs) {
+        print('Documento ID: ${doc.id}');
+        print('Datos: ${doc.data()}');
+      }
+      
+      print('=== FIN DEBUG ===');
+    } catch (e) {
+      print('Error en debug: $e');
+    }
   }
 
   Future<void> _eliminarPlaneacion(String planeacionId, String titulo) async {
@@ -108,22 +143,127 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
   }
 
   void _editarPlaneacion(Map<String, dynamic> planeacionData, String planeacionId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MainPage(
-          planeacionExistente: planeacionData,
-          planeacionId: planeacionId,
-        ),
-      ),
-    );
+    // Extraer datos de la planeación
+    final String titulo = planeacionData['titulo'] ?? '';
+    final String modalidad = planeacionData['modalidad'] ?? '';
+    final List<String> campus = List<String>.from(planeacionData['campus'] ?? []);
+    final List<Map<String, dynamic>> contenidos = List<Map<String, dynamic>>.from(planeacionData['contenidos'] ?? []);
+    final List<Map<String, dynamic>> seleccionGrados = List<Map<String, dynamic>>.from(planeacionData['seleccionGrados'] ?? []);
+
+    // Navegar a la pantalla correspondiente según la modalidad
+    switch (modalidad) {
+      case "Aprendizaje basado en el juego":
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetallarABJPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              isEditing: true,
+              planeacionId: planeacionId,
+            ),
+          ),
+        );
+        break;
+        
+      case "Centros de interés":
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetallarCentrosInteresPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              isEditing: true,
+              planeacionId: planeacionId,
+            ),
+          ),
+        );
+        break;
+        
+      case "Taller crítico":
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetallarTallerPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              isEditing: true,
+              planeacionId: planeacionId,
+            ),
+          ),
+        );
+        break;
+        
+      case "Proyecto":
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetallarProyectoPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              isEditing: true,
+              planeacionId: planeacionId,
+            ),
+          ),
+        );
+        break;
+        
+      case "Unidad didáctica":
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetallarUnidadPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              isEditing: true,
+              planeacionId: planeacionId,
+            ),
+          ),
+        );
+        break;
+        
+      case "Rincones de aprendizaje":
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetallarRinconesPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              isEditing: true,
+              planeacionId: planeacionId,
+            ),
+          ),
+        );
+        break;
+        
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Modalidad no reconocida para edición'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+    }
   }
 
   void _crearNuevaPlaneacion() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const MainPage(),
+        builder: (context) => const OpcionesPage(),
       ),
     );
   }
@@ -252,9 +392,20 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
                                   stream: FirebaseFirestore.instance
                                       .collection('planeaciones')
                                       .where('userId', isEqualTo: currentUser!.uid)
-                                      .orderBy('fechaCreacion', descending: true)
+                                      .orderBy('fecha_creacion', descending: true)
                                       .snapshots(),
                                   builder: (context, snapshot) {
+                                    // Debug información
+                                    print('StreamBuilder - ConnectionState: ${snapshot.connectionState}');
+                                    print('StreamBuilder - HasData: ${snapshot.hasData}');
+                                    print('StreamBuilder - HasError: ${snapshot.hasError}');
+                                    if (snapshot.hasData) {
+                                      print('StreamBuilder - Docs count: ${snapshot.data!.docs.length}');
+                                    }
+                                    if (snapshot.hasError) {
+                                      print('StreamBuilder - Error: ${snapshot.error}');
+                                    }
+
                                     if (snapshot.connectionState == ConnectionState.waiting) {
                                       return const Center(
                                         child: CircularProgressIndicator(
@@ -265,12 +416,24 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
 
                                     if (snapshot.hasError) {
                                       return Center(
-                                        child: Text(
-                                          'Error: ${snapshot.error}',
-                                          style: const TextStyle(
-                                            color: Colors.red,
-                                            fontFamily: 'ComicNeue',
-                                          ),
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.error_outline,
+                                              size: 64,
+                                              color: Colors.red,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              'Error: ${snapshot.error}',
+                                              style: const TextStyle(
+                                                color: Colors.red,
+                                                fontFamily: 'ComicNeue',
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
                                         ),
                                       );
                                     }
@@ -354,7 +517,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
                                                       ),
                                                     ),
                                                     Text(
-                                                      _formatearFecha(data['fechaCreacion']),
+                                                      _formatearFecha(data['fecha_creacion']),
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         color: Colors.grey[600],
@@ -367,12 +530,10 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
                                                 const SizedBox(height: 8),
                                                 
                                                 // Información básica
-                                                if (data['materia'] != null)
-                                                  _buildInfoChip('Materia', data['materia'], Icons.book),
-                                                if (data['grado'] != null)
-                                                  _buildInfoChip('Grado', data['grado'], Icons.grade),
-                                                if (data['tema'] != null)
-                                                  _buildInfoChip('Tema', data['tema'], Icons.topic),
+                                                if (data['modalidad'] != null)
+                                                  _buildInfoChip('Modalidad', data['modalidad'], Icons.school),
+                                                if (data['campus'] != null && (data['campus'] as List).isNotEmpty)
+                                                  _buildInfoChip('Campos', (data['campus'] as List).join(', '), Icons.category),
                                                 
                                                 const SizedBox(height: 16),
                                                 

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'pages/visualizar_pdf_page.dart'; // ✅ Agregar importación
+import 'pages/visualizar_pdf_page.dart';
 
 class DetallarCentrosInteresPage extends StatefulWidget {
   final String titulo;
   final List<String> campus;
   final List<Map<String, dynamic>> contenidos;
   final List<Map<String, dynamic>> seleccionGrados;
+  final bool isEditing;
+  final String? planeacionId;
 
   const DetallarCentrosInteresPage({
     super.key,
@@ -14,6 +16,8 @@ class DetallarCentrosInteresPage extends StatefulWidget {
     required this.campus,
     required this.contenidos,
     required this.seleccionGrados,
+    this.isEditing = false,
+    this.planeacionId,
   });
 
   @override
@@ -63,6 +67,67 @@ class _DetallarCentrosInteresPageState
     for (final campo in widget.campus) {
       relacionPorCampo[campo] = TextEditingController();
     }
+    
+    if (widget.isEditing && widget.planeacionId != null) {
+      _cargarDatosExistentes();
+    }
+  }
+
+  Future<void> _cargarDatosExistentes() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('detalles_centros_interes')
+          .doc(widget.planeacionId)
+          .get();
+
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        
+        setState(() {
+          propositoController.text = data['proposito'] ?? '';
+          relevanciaController.text = data['relevancia_social'] ?? '';
+          ejeSeleccionado = data['eje_articulador'];
+          
+          if (data['momentos'] != null) {
+            final momentos = data['momentos'] as Map<String, dynamic>;
+            contactoRealidadController.text = momentos['contacto_realidad'] ?? '';
+            identificacionIntegracionController.text = momentos['identificacion_integracion'] ?? '';
+            expresionController.text = momentos['expresion'] ?? '';
+            variantesController.text = momentos['posibles_variantes'] ?? '';
+          }
+          
+          if (data['materiales'] != null) {
+            materiales.clear();
+            materiales.addAll(List<String>.from(data['materiales']));
+          }
+          if (data['espacios'] != null) {
+            espacios.clear();
+            espacios.addAll(List<String>.from(data['espacios']));
+          }
+          if (data['produccion_sugerida'] != null) {
+            produccion.clear();
+            produccion.addAll(List<String>.from(data['produccion_sugerida']));
+          }
+          
+          if (data['relacion_contenidos'] != null) {
+            final relaciones = data['relacion_contenidos'] as Map<String, dynamic>;
+            relaciones.forEach((campo, texto) {
+              if (relacionPorCampo[campo] != null) {
+                relacionPorCampo[campo]!.text = texto ?? '';
+              }
+            });
+          }
+        });
+      }
+    } catch (e) {
+      print('Error al cargar datos existentes: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar datos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   String get periodoAplicacionTexto {
@@ -102,16 +167,26 @@ class _DetallarCentrosInteresPageState
       "fecha_creacion": FieldValue.serverTimestamp(),
     };
 
-    await FirebaseFirestore.instance
-        .collection('detalles_centros_interes')
-        .add(data);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('¡Detalle guardado correctamente!')),
-    );
+    if (widget.isEditing && widget.planeacionId != null) {
+      await FirebaseFirestore.instance
+          .collection('detalles_centros_interes')
+          .doc(widget.planeacionId)
+          .update(data);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Detalle actualizado correctamente!')),
+      );
+    } else {
+      await FirebaseFirestore.instance
+          .collection('detalles_centros_interes')
+          .add(data);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Detalle guardado correctamente!')),
+      );
+    }
   }
 
-  // ✅ Agregar función _visualizarPDF()
   void _visualizarPDF() {
     final momentos = {
       'contacto_realidad': contactoRealidadController.text,
@@ -128,7 +203,7 @@ class _DetallarCentrosInteresPageState
       context,
       MaterialPageRoute(
         builder: (_) => VisualizarPDFPage(
-          modalidad: 'Centros de Interés', // ✅ Modalidad específica
+          modalidad: 'Centros de Interés',
           pdfFileName: 'planeacion_centros_interes.pdf',
           wordFileName: 'planeacion_centros_interes.docx',
           titulo: widget.titulo,
@@ -162,7 +237,9 @@ class _DetallarCentrosInteresPageState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detallar: Centros de Interés'),
+        title: Text(widget.isEditing 
+            ? 'Editar: Centros de Interés' 
+            : 'Detallar: Centros de Interés'),
         backgroundColor: Colors.green.shade900,
         foregroundColor: Colors.white,
       ),
@@ -322,8 +399,12 @@ class _DetallarCentrosInteresPageState
                   final result = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('¿Deseas guardar la planeación?'),
-                      content: const Text('Una vez dado al botón de Sí no podrás cambiar nada.'),
+                      title: Text(widget.isEditing 
+                          ? '¿Deseas actualizar la planeación?' 
+                          : '¿Deseas guardar la planeación?'),
+                      content: Text(widget.isEditing 
+                          ? 'Se actualizarán todos los cambios realizados.'
+                          : 'Una vez dado al botón de Sí no podrás cambiar nada.'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(false),
@@ -342,7 +423,7 @@ class _DetallarCentrosInteresPageState
                   );
                   if (result == true) {
                     await guardarDetalleCentrosInteres();
-                    _visualizarPDF(); // ✅ Agregar llamada a visualizar PDF
+                    _visualizarPDF();
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -351,7 +432,9 @@ class _DetallarCentrosInteresPageState
                   padding:
                       const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
-                child: const Text('Visualizar PDF'),
+                child: Text(widget.isEditing 
+                    ? 'Actualizar y Visualizar PDF' 
+                    : 'Visualizar PDF'),
               ),
             ),
           ],

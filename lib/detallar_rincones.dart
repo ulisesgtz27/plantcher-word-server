@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'pages/visualizar_pdf_page.dart'; // ✅ Agregar importación
+import 'pages/visualizar_pdf_page.dart';
 
 class DetallarRinconesPage extends StatefulWidget {
   final String titulo;
   final List<String> campus;
   final List<Map<String, dynamic>> contenidos;
   final List<Map<String, dynamic>> seleccionGrados;
+  final bool isEditing;
+  final String? planeacionId;
 
   const DetallarRinconesPage({
     super.key,
@@ -14,6 +16,8 @@ class DetallarRinconesPage extends StatefulWidget {
     required this.campus,
     required this.contenidos,
     required this.seleccionGrados,
+    this.isEditing = false,
+    this.planeacionId,
   });
 
   @override
@@ -24,16 +28,11 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
   final TextEditingController propositoController = TextEditingController();
   final TextEditingController relevanciaController = TextEditingController();
   final TextEditingController puntoPartidaController = TextEditingController();
-  final TextEditingController asambleaInicialController =
-      TextEditingController();
-  final TextEditingController exploracionRinconesController =
-      TextEditingController();
-  final TextEditingController exploracionDescubrimientoController =
-      TextEditingController();
-  final TextEditingController compartimosAprendidoController =
-      TextEditingController();
-  final TextEditingController evaluamosExperienciaController =
-      TextEditingController();
+  final TextEditingController asambleaInicialController = TextEditingController();
+  final TextEditingController exploracionRinconesController = TextEditingController();
+  final TextEditingController exploracionDescubrimientoController = TextEditingController();
+  final TextEditingController compartimosAprendidoController = TextEditingController();
+  final TextEditingController evaluamosExperienciaController = TextEditingController();
   final TextEditingController variantesController = TextEditingController();
 
   DateTime? fechaInicio;
@@ -65,6 +64,76 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
     super.initState();
     for (final campo in widget.campus) {
       relacionPorCampo[campo] = TextEditingController();
+    }
+    
+    if (widget.isEditing && widget.planeacionId != null) {
+      _cargarDatosExistentes();
+    }
+  }
+
+  Future<void> _cargarDatosExistentes() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('detalles_rincones')
+          .doc(widget.planeacionId)
+          .get();
+
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        
+        setState(() {
+          propositoController.text = data['proposito'] ?? '';
+          relevanciaController.text = data['relevancia_social'] ?? '';
+          ejeSeleccionado = data['eje_articulador'];
+          
+          // Cargar fechas si existen
+          if (data['periodo_aplicacion'] != null) {
+            String periodo = data['periodo_aplicacion'];
+            // Aquí podrías implementar parseo de fechas si las guardas por separado
+          }
+          
+          if (data['momentos'] != null) {
+            final momentos = data['momentos'] as Map<String, dynamic>;
+            puntoPartidaController.text = momentos['punto_partida'] ?? '';
+            asambleaInicialController.text = momentos['asamblea_inicial'] ?? '';
+            exploracionRinconesController.text = momentos['exploracion_rincones'] ?? '';
+            exploracionDescubrimientoController.text = momentos['exploracion_descubrimiento'] ?? '';
+            compartimosAprendidoController.text = momentos['compartimos_aprendido'] ?? '';
+            evaluamosExperienciaController.text = momentos['evaluamos_experiencia'] ?? '';
+            variantesController.text = momentos['posibles_variantes'] ?? '';
+          }
+          
+          if (data['materiales'] != null) {
+            materiales.clear();
+            materiales.addAll(List<String>.from(data['materiales']));
+          }
+          if (data['espacios'] != null) {
+            espacios.clear();
+            espacios.addAll(List<String>.from(data['espacios']));
+          }
+          if (data['produccion_sugerida'] != null) {
+            produccion.clear();
+            produccion.addAll(List<String>.from(data['produccion_sugerida']));
+          }
+          
+          if (data['relacion_contenidos'] != null) {
+            final relaciones = data['relacion_contenidos'] as Map<String, dynamic>;
+            relaciones.forEach((campo, texto) {
+              if (relacionPorCampo[campo] != null) {
+                relacionPorCampo[campo]!.text = texto ?? '';
+              }
+            });
+          }
+        });
+      }
+    } catch (e) {
+      print('Error al cargar datos existentes: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar datos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -118,14 +187,24 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
       "fecha_creacion": FieldValue.serverTimestamp(),
     };
 
-    await FirebaseFirestore.instance.collection('detalles_rincones').add(data);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('¡Detalle guardado correctamente!')),
-    );
+    if (widget.isEditing && widget.planeacionId != null) {
+      await FirebaseFirestore.instance
+          .collection('detalles_rincones')
+          .doc(widget.planeacionId)
+          .update(data);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Detalle actualizado correctamente!')),
+      );
+    } else {
+      await FirebaseFirestore.instance.collection('detalles_rincones').add(data);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Detalle guardado correctamente!')),
+      );
+    }
   }
 
-  // ✅ Agregar función _visualizarPDF()
   void _visualizarPDF() {
     final momentos = {
       'punto_partida': puntoPartidaController.text,
@@ -145,7 +224,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
       context,
       MaterialPageRoute(
         builder: (_) => VisualizarPDFPage(
-          modalidad: 'Rincones de Aprendizaje', // ✅ Modalidad específica
+          modalidad: 'Rincones de Aprendizaje',
           pdfFileName: 'planeacion_rincones.pdf',
           wordFileName: 'planeacion_rincones.docx',
           titulo: widget.titulo,
@@ -189,8 +268,10 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detallar: Rincones de Aprendizaje'),
-        backgroundColor: Colors.pink[800], // Rosa fuerte
+        title: Text(widget.isEditing 
+            ? 'Editar: Rincones de Aprendizaje' 
+            : 'Detallar: Rincones de Aprendizaje'),
+        backgroundColor: Colors.pink[800],
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -283,8 +364,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
             _infoList(_getContenidos()),
             _titulo('Procesos de Desarrollo y Aprendizaje'),
             _procesosDesarrollo(),
-            _titulo(
-                'Relación entre los contenidos curriculares en la propuesta'),
+            _titulo('Relación entre los contenidos curriculares en la propuesta'),
             ...widget.campus.map((campo) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Column(
@@ -332,21 +412,15 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
             _subtitulo('1. Punto de partida (Saberes previos)'),
             _input(puntoPartidaController, 'Describe el punto de partida...'),
             _subtitulo('2. Asamblea inicial y planeación'),
-            _input(asambleaInicialController,
-                'Describe la asamblea inicial y planeación...'),
+            _input(asambleaInicialController, 'Describe la asamblea inicial y planeación...'),
             _subtitulo('3. Exploración de los rincones'),
-            _input(exploracionRinconesController,
-                'Describe la exploración de los rincones...'),
+            _input(exploracionRinconesController, 'Describe la exploración de los rincones...'),
             _subtitulo('4. Exploración y descubrimiento'),
-            _input(exploracionDescubrimientoController,
-                'Describe la exploración y descubrimiento...'),
+            _input(exploracionDescubrimientoController, 'Describe la exploración y descubrimiento...'),
             _subtitulo('5. Compartimos lo aprendido'),
-            _input(compartimosAprendidoController,
-                'Describe cómo comparten lo aprendido...'),
-            _subtitulo(
-                '6. Evaluamos la experiencia (Reflexión sobre el aprendizaje)'),
-            _input(evaluamosExperienciaController,
-                'Describe la evaluación/reflexión...'),
+            _input(compartimosAprendidoController, 'Describe cómo comparten lo aprendido...'),
+            _subtitulo('6. Evaluamos la experiencia (Reflexión sobre el aprendizaje)'),
+            _input(evaluamosExperienciaController, 'Describe la evaluación/reflexión...'),
             _subtitulo('Posibles variantes'),
             _input(variantesController, 'Describe posibles variantes...'),
             const SizedBox(height: 24),
@@ -363,9 +437,12 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
                   final result = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('¿Deseas guardar la planeación?'),
-                      content: const Text(
-                          'Una vez dado al botón de Sí no podrás cambiar nada.'),
+                      title: Text(widget.isEditing 
+                          ? '¿Deseas actualizar la planeación?' 
+                          : '¿Deseas guardar la planeación?'),
+                      content: Text(widget.isEditing 
+                          ? 'Se actualizarán todos los cambios realizados.'
+                          : 'Una vez dado al botón de Sí no podrás cambiar nada.'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(false),
@@ -384,16 +461,17 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
                   );
                   if (result == true) {
                     await guardarDetalleRincones();
-                    _visualizarPDF(); // ✅ Agregar llamada a visualizar PDF
+                    _visualizarPDF();
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.pink[800],
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
-                child: const Text('Visualizar PDF'),
+                child: Text(widget.isEditing 
+                    ? 'Actualizar y Visualizar PDF' 
+                    : 'Visualizar PDF'),
               ),
             ),
           ],
@@ -451,27 +529,23 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
     List<Widget> widgets = [];
     for (final campo in widget.seleccionGrados) {
       final campoNombre = campo['campo'];
-      final gradosPorContenido =
-          campo['gradosPorContenido'] as Map<String, dynamic>;
+      final gradosPorContenido = campo['gradosPorContenido'] as Map<String, dynamic>;
       widgets.add(Padding(
         padding: const EdgeInsets.only(top: 8, bottom: 4),
         child: Text(
           campoNombre,
-          style:
-              const TextStyle(fontWeight: FontWeight.bold, color: Colors.pink),
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.pink),
         ),
       ));
       gradosPorContenido.forEach((contenido, grados) {
         widgets.add(Padding(
           padding: const EdgeInsets.only(left: 8, top: 2),
-          child: Text(contenido,
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+          child: Text(contenido, style: const TextStyle(fontWeight: FontWeight.bold)),
         ));
         (grados as Map<String, dynamic>).forEach((grado, elementos) {
           widgets.add(Padding(
             padding: const EdgeInsets.only(left: 24, top: 2),
-            child: Text('Grado $grado:',
-                style: const TextStyle(fontStyle: FontStyle.italic)),
+            child: Text('Grado $grado:', style: const TextStyle(fontStyle: FontStyle.italic)),
           ));
           for (final el in (elementos as List)) {
             widgets.add(Padding(
@@ -484,13 +558,11 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, children: widgets),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: widgets),
     );
   }
 
-  Widget _listaEditable(
-      List<String> lista, TextEditingController controller, String hint) {
+  Widget _listaEditable(List<String> lista, TextEditingController controller, String hint) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -513,8 +585,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
                 controller: controller,
                 decoration: InputDecoration(
                   hintText: hint,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 onSubmitted: (v) {
                   if (v.trim().isNotEmpty) {
@@ -552,5 +623,25 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage> {
       }
     }
     return result;
+  }
+
+  @override
+  void dispose() {
+    propositoController.dispose();
+    relevanciaController.dispose();
+    puntoPartidaController.dispose();
+    asambleaInicialController.dispose();
+    exploracionRinconesController.dispose();
+    exploracionDescubrimientoController.dispose();
+    compartimosAprendidoController.dispose();
+    evaluamosExperienciaController.dispose();
+    variantesController.dispose();
+    materialInput.dispose();
+    espacioInput.dispose();
+    produccionInput.dispose();
+    for (final controller in relacionPorCampo.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 }

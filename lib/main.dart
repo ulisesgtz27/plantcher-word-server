@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ Agregar esta importación
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'login_page.dart';
 import 'opciones_page.dart';
-import 'planeaciones_list_page.dart'; // ✅ Agregar esta importación
+import 'planeaciones_list_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +60,8 @@ class AuthWrapper extends StatelessWidget {
         
         // Si hay un usuario autenticado, verificar si tiene proyectos
         if (snapshot.hasData) {
+          print('Usuario autenticado: ${snapshot.data!.uid}');
+          
           return FutureBuilder<bool>(
             future: _hasUserCreatedProjects(snapshot.data!.uid),
             builder: (context, projectSnapshot) {
@@ -71,18 +73,23 @@ class AuthWrapper extends StatelessWidget {
                 );
               }
               
+              print('¿Usuario tiene proyectos? ${projectSnapshot.data}');
+              
               // Si el usuario ha creado al menos un proyecto, mostrar la lista de planeaciones
               if (projectSnapshot.data == true) {
+                print('Mostrando PlaneacionesListPage');
                 return const PlaneacionesListPage();
               }
               
               // Si no ha creado proyectos, mostrar la página principal (primera vez)
+              print('Mostrando MyHomePage');
               return const MyHomePage();
             },
           );
         }
         
         // Si no hay usuario, mostrar login
+        print('No hay usuario, mostrando LoginPage');
         return const LoginPage();
       },
     );
@@ -90,6 +97,8 @@ class AuthWrapper extends StatelessWidget {
 
   Future<bool> _hasUserCreatedProjects(String userId) async {
     try {
+      print('Verificando proyectos para usuario: $userId');
+      
       // Verificar en todas las colecciones de proyectos si el usuario ha creado algo
       final collections = [
         'detalles_proyecto',
@@ -97,24 +106,40 @@ class AuthWrapper extends StatelessWidget {
         'detalles_taller',
         'detalles_rincones',
         'detalles_centros_interes',
-        'detalles_abj'
+        'detalles_abj',
+        'planeaciones' // Incluir planeaciones
       ];
       
       for (String collection in collections) {
-        QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-            .collection(collection)
-            .where('user_id', isEqualTo: userId)
-            .limit(1)
-            .get();
-            
+        QuerySnapshot querySnapshot;
+        
+        // Para la colección 'planeaciones' usar 'userId', para las demás usar 'user_id'
+        if (collection == 'planeaciones') {
+          querySnapshot = await FirebaseFirestore.instance
+              .collection(collection)
+              .where('userId', isEqualTo: userId)
+              .limit(1)
+              .get();
+        } else {
+          querySnapshot = await FirebaseFirestore.instance
+              .collection(collection)
+              .where('user_id', isEqualTo: userId)
+              .limit(1)
+              .get();
+        }
+        
+        print('Colección $collection: ${querySnapshot.docs.length} documentos');
+          
         if (querySnapshot.docs.isNotEmpty) {
+          print('✅ Usuario tiene proyectos en: $collection');
           return true;
         }
       }
       
+      print('❌ Usuario NO tiene proyectos en ninguna colección');
       return false;
     } catch (e) {
-      print('Error verificando proyectos del usuario: $e');
+      print('❌ Error verificando proyectos del usuario: $e');
       return false;
     }
   }

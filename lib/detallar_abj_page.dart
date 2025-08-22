@@ -7,6 +7,8 @@ class DetallarABJPage extends StatefulWidget {
   final List<String> campus;
   final List<Map<String, dynamic>> contenidos;
   final List<Map<String, dynamic>> seleccionGrados;
+  final bool isEditing; // ✅ Agregar parámetro
+  final String? planeacionId; // ✅ Agregar parámetro
 
   const DetallarABJPage({
     super.key,
@@ -14,6 +16,8 @@ class DetallarABJPage extends StatefulWidget {
     required this.campus,
     required this.contenidos,
     required this.seleccionGrados,
+    this.isEditing = false, // ✅ Valor por defecto
+    this.planeacionId, // ✅ Opcional
   });
 
   @override
@@ -59,6 +63,92 @@ class _DetallarABJPageState extends State<DetallarABJPage> {
     for (final campo in widget.campus) {
       relacionPorCampo[campo] = TextEditingController();
     }
+    
+    // ✅ Si estamos editando, cargar los datos existentes
+    if (widget.isEditing && widget.planeacionId != null) {
+      _cargarDatosExistentes();
+    }
+  }
+
+  // ✅ Función para cargar datos existentes cuando se está editando
+  Future<void> _cargarDatosExistentes() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('detalles_abj')
+          .doc(widget.planeacionId)
+          .get();
+
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        
+        setState(() {
+          propositoController.text = data['proposito'] ?? '';
+          relevanciaController.text = data['relevancia_social'] ?? '';
+          ejeSeleccionado = data['eje_articulador'];
+          
+          // Cargar momentos
+          if (data['momentos'] != null) {
+            final momentos = data['momentos'] as Map<String, dynamic>;
+            planteamientoController.text = momentos['planteamiento_juego'] ?? '';
+            desarrolloController.text = momentos['desarrollo_actividades'] ?? '';
+            compartamosController.text = momentos['compartamos_experiencia'] ?? '';
+            comunidadController.text = momentos['comunidad_juego'] ?? '';
+            variantesController.text = momentos['posibles_variantes'] ?? '';
+          }
+          
+          // Cargar listas
+          if (data['materiales'] != null) {
+            materiales.clear();
+            materiales.addAll(List<String>.from(data['materiales']));
+          }
+          if (data['espacios'] != null) {
+            espacios.clear();
+            espacios.addAll(List<String>.from(data['espacios']));
+          }
+          if (data['produccion_sugerida'] != null) {
+            produccion.clear();
+            produccion.addAll(List<String>.from(data['produccion_sugerida']));
+          }
+          
+          // Cargar relación de contenidos
+          if (data['relacion_contenidos'] != null) {
+            final relaciones = data['relacion_contenidos'] as Map<String, dynamic>;
+            relaciones.forEach((campo, texto) {
+              if (relacionPorCampo[campo] != null) {
+                relacionPorCampo[campo]!.text = texto ?? '';
+              }
+            });
+          }
+          
+          // Cargar fechas del periodo de aplicación
+          if (data['periodo_aplicacion'] != null) {
+            _parsearPeriodoAplicacion(data['periodo_aplicacion']);
+          }
+        });
+      }
+    } catch (e) {
+      print('Error al cargar datos existentes: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar datos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // ✅ Función para parsear el periodo de aplicación
+  void _parsearPeriodoAplicacion(String periodo) {
+    try {
+      final partes = periodo.split(' - ');
+      if (partes.length == 2) {
+        // Por simplicidad, no implementamos el parsing completo de fechas
+        // Puedes mejorarlo más tarde si es necesario
+        print('Periodo a parsear: $periodo');
+      }
+    } catch (e) {
+      print('Error al parsear periodo: $e');
+    }
   }
 
   String get periodoAplicacionTexto {
@@ -99,11 +189,24 @@ class _DetallarABJPageState extends State<DetallarABJPage> {
       "fecha_creacion": FieldValue.serverTimestamp(),
     };
 
-    await FirebaseFirestore.instance.collection('detalles_abj').add(data);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('¡Detalle guardado correctamente!')),
-    );
+    if (widget.isEditing && widget.planeacionId != null) {
+      // ✅ Actualizar documento existente
+      await FirebaseFirestore.instance
+          .collection('detalles_abj')
+          .doc(widget.planeacionId)
+          .update(data);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Detalle actualizado correctamente!')),
+      );
+    } else {
+      // ✅ Crear nuevo documento
+      await FirebaseFirestore.instance.collection('detalles_abj').add(data);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Detalle guardado correctamente!')),
+      );
+    }
   }
 
   void _visualizarPDF() {
@@ -120,13 +223,11 @@ class _DetallarABJPageState extends State<DetallarABJPage> {
         campo: relacionPorCampo[campo]?.text ?? ""
     };
 
-    // Ya no necesitamos generar el PDF aquí, se genera automáticamente en VisualizarPDFPage
-
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => VisualizarPDFPage(
-          modalidad: 'ABJ', // ✅ Agregar el parámetro modalidad
+          modalidad: 'ABJ',
           pdfFileName: 'planeacion_abj.pdf',
           wordFileName: 'planeacion_abj.docx',
           titulo: widget.titulo,
@@ -152,7 +253,9 @@ class _DetallarABJPageState extends State<DetallarABJPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detallar: Aprendizaje basado en el juego'),
+        title: Text(widget.isEditing 
+            ? 'Editar: Aprendizaje basado en el juego' 
+            : 'Detallar: Aprendizaje basado en el juego'), // ✅ Cambiar título según el modo
         backgroundColor: Colors.deepOrange,
         foregroundColor: Colors.white,
       ),
@@ -308,8 +411,12 @@ class _DetallarABJPageState extends State<DetallarABJPage> {
                   final result = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('¿Deseas guardar la planeación?'),
-                      content: const Text('Una vez dado al botón de Sí no podrás cambiar nada.'),
+                      title: Text(widget.isEditing 
+                          ? '¿Deseas actualizar la planeación?' 
+                          : '¿Deseas guardar la planeación?'), // ✅ Cambiar texto
+                      content: Text(widget.isEditing 
+                          ? 'Se actualizarán todos los cambios realizados.'
+                          : 'Una vez dado al botón de Sí no podrás cambiar nada.'), // ✅ Cambiar texto
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(false),
@@ -336,7 +443,9 @@ class _DetallarABJPageState extends State<DetallarABJPage> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
-                child: const Text('Visualizar PDF'),
+                child: Text(widget.isEditing 
+                    ? 'Actualizar y Visualizar PDF' 
+                    : 'Visualizar PDF'), // ✅ Cambiar texto
               ),
             ),
           ],

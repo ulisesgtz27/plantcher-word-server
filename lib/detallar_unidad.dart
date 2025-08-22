@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'pages/visualizar_pdf_page.dart'; // ✅ Agregar importación
+import 'pages/visualizar_pdf_page.dart';
 
 class DetallarUnidadPage extends StatefulWidget {
   final String titulo;
   final List<String> campus;
   final List<Map<String, dynamic>> contenidos;
   final List<Map<String, dynamic>> seleccionGrados;
+  final bool isEditing;
+  final String? planeacionId;
 
   const DetallarUnidadPage({
     super.key,
@@ -14,6 +16,8 @@ class DetallarUnidadPage extends StatefulWidget {
     required this.campus,
     required this.contenidos,
     required this.seleccionGrados,
+    this.isEditing = false,
+    this.planeacionId,
   });
 
   @override
@@ -61,6 +65,70 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
     for (final campo in widget.campus) {
       relacionPorCampo[campo] = TextEditingController();
     }
+    
+    if (widget.isEditing && widget.planeacionId != null) {
+      _cargarDatosExistentes();
+    }
+  }
+
+  Future<void> _cargarDatosExistentes() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('detalles_unidad')
+          .doc(widget.planeacionId)
+          .get();
+
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        
+        setState(() {
+          propositoController.text = data['proposito'] ?? '';
+          relevanciaController.text = data['relevancia_social'] ?? '';
+          ejeSeleccionado = data['eje_articulador'];
+          
+          if (data['momentos'] != null) {
+            final momentos = data['momentos'] as Map<String, dynamic>;
+            lecturaRealidadController.text = momentos['lectura_realidad'] ?? '';
+            identificacionTramaController.text = momentos['identificacion_trama'] ?? '';
+            planificacionController.text = momentos['planificacion'] ?? '';
+            exploracionController.text = momentos['exploracion'] ?? '';
+            participacionController.text = momentos['participacion'] ?? '';
+            conclusionController.text = momentos['conclusion'] ?? '';
+            variantesController.text = momentos['posibles_variantes'] ?? '';
+          }
+          
+          if (data['materiales'] != null) {
+            materiales.clear();
+            materiales.addAll(List<String>.from(data['materiales']));
+          }
+          if (data['espacios'] != null) {
+            espacios.clear();
+            espacios.addAll(List<String>.from(data['espacios']));
+          }
+          if (data['produccion_sugerida'] != null) {
+            produccion.clear();
+            produccion.addAll(List<String>.from(data['produccion_sugerida']));
+          }
+          
+          if (data['relacion_contenidos'] != null) {
+            final relaciones = data['relacion_contenidos'] as Map<String, dynamic>;
+            relaciones.forEach((campo, texto) {
+              if (relacionPorCampo[campo] != null) {
+                relacionPorCampo[campo]!.text = texto ?? '';
+              }
+            });
+          }
+        });
+      }
+    } catch (e) {
+      print('Error al cargar datos existentes: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar datos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   String get periodoAplicacionTexto {
@@ -103,14 +171,24 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
       "fecha_creacion": FieldValue.serverTimestamp(),
     };
 
-    await FirebaseFirestore.instance.collection('detalles_unidad').add(data);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('¡Detalle guardado correctamente!')),
-    );
+    if (widget.isEditing && widget.planeacionId != null) {
+      await FirebaseFirestore.instance
+          .collection('detalles_unidad')
+          .doc(widget.planeacionId)
+          .update(data);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Detalle actualizado correctamente!')),
+      );
+    } else {
+      await FirebaseFirestore.instance.collection('detalles_unidad').add(data);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Detalle guardado correctamente!')),
+      );
+    }
   }
 
-  // ✅ Agregar función _visualizarPDF()
   void _visualizarPDF() {
     final momentos = {
       'lectura_realidad': lecturaRealidadController.text,
@@ -130,7 +208,7 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
       context,
       MaterialPageRoute(
         builder: (_) => VisualizarPDFPage(
-          modalidad: 'Unidad Didáctica', // ✅ Modalidad específica
+          modalidad: 'Unidad Didáctica',
           pdfFileName: 'planeacion_unidad.pdf',
           wordFileName: 'planeacion_unidad.docx',
           titulo: widget.titulo,
@@ -164,8 +242,10 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detallar: Unidad Didáctica'),
-        backgroundColor: Colors.green[900], // Verde oscuro
+        title: Text(widget.isEditing 
+            ? 'Editar: Unidad Didáctica' 
+            : 'Detallar: Unidad Didáctica'),
+        backgroundColor: Colors.green[900],
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -324,8 +404,12 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
                   final result = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('¿Deseas guardar la planeación?'),
-                      content: const Text('Una vez dado al botón de Sí no podrás cambiar nada.'),
+                      title: Text(widget.isEditing 
+                          ? '¿Deseas actualizar la planeación?' 
+                          : '¿Deseas guardar la planeación?'),
+                      content: Text(widget.isEditing 
+                          ? 'Se actualizarán todos los cambios realizados.'
+                          : 'Una vez dado al botón de Sí no podrás cambiar nada.'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(false),
@@ -344,7 +428,7 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
                   );
                   if (result == true) {
                     await guardarDetalleUnidad();
-                    _visualizarPDF(); // ✅ Agregar llamada a visualizar PDF
+                    _visualizarPDF();
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -352,7 +436,9 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
-                child: const Text('Visualizar PDF'),
+                child: Text(widget.isEditing 
+                    ? 'Actualizar y Visualizar PDF' 
+                    : 'Visualizar PDF'),
               ),
             ),
           ],

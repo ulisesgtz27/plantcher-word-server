@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'detallar_abj_page.dart';
 import 'detallar_centros_page.dart';
-import 'detallar_taller.dart'; // <-- Agrega este import
+import 'detallar_taller.dart';
 import 'detallar_proyecto.dart';
 import 'detallar_unidad.dart';
-import 'detallar_rincones.dart'; // <-- Agrega este import
+import 'detallar_rincones.dart';
 
 class OpcionesPage extends StatefulWidget {
   const OpcionesPage({super.key});
@@ -146,6 +147,7 @@ class _OpcionesPageState extends State<OpcionesPage>
       "modalidad": modalidadSeleccionada,
       "contenidos": contenidosList,
       "seleccionGrados": seleccionGradosList,
+      "userId": FirebaseAuth.instance.currentUser?.uid,
       "fecha_creacion": FieldValue.serverTimestamp(),
     };
 
@@ -449,7 +451,6 @@ class _OpcionesPageState extends State<OpcionesPage>
                                     ),
                                   );
                                 }
-                                // Puedes seguir agregando más else if para otras modalidades
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.deepPurple,
