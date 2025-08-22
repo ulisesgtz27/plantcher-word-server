@@ -16,9 +16,12 @@ class PlaneacionesListPage extends StatefulWidget {
   State<PlaneacionesListPage> createState() => _PlaneacionesListPageState();
 }
 
-class _PlaneacionesListPageState extends State<PlaneacionesListPage> with TickerProviderStateMixin {
+class _PlaneacionesListPageState extends State<PlaneacionesListPage> 
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
+  late AnimationController _buttonAnimationController; // ✅ AGREGADO - Para animación del botón
   late Animation<double> _fadeAnimation;
+  late Animation<double> _buttonScaleAnimation; // ✅ AGREGADO
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
   @override
@@ -28,9 +31,22 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
+    
+    // ✅ AGREGADO - Controlador para animación del botón
+    _buttonAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+    
+    // ✅ AGREGADO - Animación de escala para el botón
+    _buttonScaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
+      CurvedAnimation(parent: _buttonAnimationController, curve: Curves.easeInOut),
+    );
+    
     _animationController.forward();
     
     // Debug: Verificar datos del usuario
@@ -42,6 +58,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
   @override
   void dispose() {
     _animationController.dispose();
+    _buttonAnimationController.dispose(); // ✅ AGREGADO
     super.dispose();
   }
 
@@ -93,7 +110,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text(
                 'Cancelar',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey, fontFamily: 'ComicNeue'),
               ),
             ),
             ElevatedButton(
@@ -104,7 +121,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
               ),
               child: const Text(
                 'Eliminar',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: Colors.white, fontFamily: 'ComicNeue'),
               ),
             ),
           ],
@@ -121,10 +138,16 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Planeación eliminada exitosamente'),
+            SnackBar(
+              content: const Text(
+                'Planeación eliminada exitosamente',
+                style: TextStyle(fontFamily: 'ComicNeue'),
+              ),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
+              duration: const Duration(seconds: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
         }
@@ -132,9 +155,15 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error al eliminar: $e'),
+              content: Text(
+                'Error al eliminar: $e',
+                style: const TextStyle(fontFamily: 'ComicNeue'),
+              ),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
         }
@@ -250,16 +279,27 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
         
       default:
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Modalidad no reconocida para edición'),
+          SnackBar(
+            content: const Text(
+              'Modalidad no reconocida para edición',
+              style: TextStyle(fontFamily: 'ComicNeue'),
+            ),
             backgroundColor: Colors.orange,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
     }
   }
 
-  void _crearNuevaPlaneacion() {
+  // ✅ MODIFICADO - Función con animación al presionar
+  void _crearNuevaPlaneacion() async {
+    // Animación al presionar
+    await _buttonAnimationController.forward();
+    await _buttonAnimationController.reverse();
+    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -275,352 +315,385 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage> with Ticker
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF6A4C93), // Morado profundo
-              Color(0xFF9C89B8), // Morado medio
-              Color(0xFFB8A9C9), // Morado claro
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Column(
-              children: [
-                // Header con título y botón de cerrar sesión
-                Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF6A4C93), // Morado profundo
+                  Color(0xFF9C89B8), // Morado medio
+                  Color(0xFFB8A9C9), // Morado claro
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Column(
+                  children: [
+                    // Header con título y botón de cerrar sesión
+                    Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Mis Planeaciones',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontFamily: 'ComicNeue',
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black26,
-                                  blurRadius: 10,
-                                  offset: Offset(2, 2),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Mis Planeaciones',
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'ComicNeue',
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black26,
+                                      blurRadius: 10,
+                                      offset: Offset(2, 2),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                              Text(
+                                'Hola, ${currentUser?.email?.split('@')[0] ?? 'Usuario'}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white70,
+                                  fontFamily: 'ComicNeue',
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            'Hola, ${currentUser?.email?.split('@')[0] ?? 'Usuario'}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.white70,
-                              fontFamily: 'ComicNeue',
+                          IconButton(
+                            onPressed: _cerrarSesion,
+                            icon: const Icon(
+                              Icons.logout,
+                              color: Colors.white,
+                              size: 28,
                             ),
+                            tooltip: 'Cerrar sesión',
                           ),
                         ],
                       ),
-                      IconButton(
-                        onPressed: _cerrarSesion,
-                        icon: const Icon(
-                          Icons.logout,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        tooltip: 'Cerrar sesión',
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Lista de planeaciones
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.95),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, -5),
-                        ),
-                      ],
                     ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        
-                        // Título de la sección
-                        const Text(
-                          'Tus Planeaciones Educativas',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF6A4C93),
-                            fontFamily: 'ComicNeue',
+
+                    // Lista de planeaciones
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.95),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, -5),
+                            ),
+                          ],
                         ),
-                        
-                        const SizedBox(height: 20),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            
+                            // Título de la sección
+                            const Text(
+                              'Tus Planeaciones Educativas',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF6A4C93),
+                                fontFamily: 'ComicNeue',
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 20),
 
-                        // Lista de planeaciones
-                        Expanded(
-                          child: currentUser == null
-                              ? const Center(
-                                  child: Text(
-                                    'No has iniciado sesión',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.grey,
-                                      fontFamily: 'ComicNeue',
-                                    ),
-                                  ),
-                                )
-                              : StreamBuilder<QuerySnapshot>(
-                                  stream: FirebaseFirestore.instance
-                                      .collection('planeaciones')
-                                      .where('userId', isEqualTo: currentUser!.uid)
-                                      .orderBy('fecha_creacion', descending: true)
-                                      .snapshots(),
-                                  builder: (context, snapshot) {
-                                    // Debug información
-                                    print('StreamBuilder - ConnectionState: ${snapshot.connectionState}');
-                                    print('StreamBuilder - HasData: ${snapshot.hasData}');
-                                    print('StreamBuilder - HasError: ${snapshot.hasError}');
-                                    if (snapshot.hasData) {
-                                      print('StreamBuilder - Docs count: ${snapshot.data!.docs.length}');
-                                    }
-                                    if (snapshot.hasError) {
-                                      print('StreamBuilder - Error: ${snapshot.error}');
-                                    }
-
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
-                                      return const Center(
-                                        child: CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A4C93)),
+                            // Lista de planeaciones
+                            Expanded(
+                              child: currentUser == null
+                                  ? const Center(
+                                      child: Text(
+                                        'No has iniciado sesión',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          color: Colors.grey,
+                                          fontFamily: 'ComicNeue',
                                         ),
-                                      );
-                                    }
+                                      ),
+                                    )
+                                  : StreamBuilder<QuerySnapshot>(
+                                      stream: FirebaseFirestore.instance
+                                          .collection('planeaciones')
+                                          .where('userId', isEqualTo: currentUser!.uid)
+                                          .orderBy('fecha_creacion', descending: true)
+                                          .snapshots(),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.hasError) {
+                                          print('StreamBuilder - Error: ${snapshot.error}');
+                                        }
 
-                                    if (snapshot.hasError) {
-                                      return Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(
-                                              Icons.error_outline,
-                                              size: 64,
-                                              color: Colors.red,
+                                        if (snapshot.connectionState == ConnectionState.waiting) {
+                                          return const Center(
+                                            child: CircularProgressIndicator(
+                                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A4C93)),
                                             ),
-                                            const SizedBox(height: 16),
-                                            Text(
-                                              'Error: ${snapshot.error}',
-                                              style: const TextStyle(
-                                                color: Colors.red,
-                                                fontFamily: 'ComicNeue',
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }
+                                          );
+                                        }
 
-                                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                                      return Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.school_outlined,
-                                              size: 80,
-                                              color: Colors.grey[300],
-                                            ),
-                                            const SizedBox(height: 16),
-                                            const Text(
-                                              '¡Comienza tu primera planeación!',
-                                              style: TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF6A4C93),
-                                                fontFamily: 'ComicNeue',
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            const Text(
-                                              'Aún no has creado ninguna planeación.\nPresiona el botón + para comenzar.',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                color: Colors.grey,
-                                                fontFamily: 'ComicNeue',
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }
-
-                                    return ListView.builder(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      itemCount: snapshot.data!.docs.length,
-                                      itemBuilder: (context, index) {
-                                        DocumentSnapshot doc = snapshot.data!.docs[index];
-                                        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-                                        
-                                        return Container(
-                                          margin: const EdgeInsets.only(bottom: 16),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(16),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.08),
-                                                blurRadius: 10,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ],
-                                            border: Border.all(
-                                              color: const Color(0xFF6A4C93).withOpacity(0.2),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(16),
+                                        if (snapshot.hasError) {
+                                          return Center(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
-                                                // Título y fecha
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        data['titulo'] ?? 'Planeación sin título',
-                                                        style: const TextStyle(
-                                                          fontSize: 18,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Color(0xFF6A4C93),
-                                                          fontFamily: 'ComicNeue',
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      _formatearFecha(data['fecha_creacion']),
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.grey[600],
-                                                        fontFamily: 'ComicNeue',
-                                                      ),
-                                                    ),
-                                                  ],
+                                                const Icon(
+                                                  Icons.error_outline,
+                                                  size: 64,
+                                                  color: Colors.red,
                                                 ),
-                                                
-                                                const SizedBox(height: 8),
-                                                
-                                                // Información básica
-                                                if (data['modalidad'] != null)
-                                                  _buildInfoChip('Modalidad', data['modalidad'], Icons.school),
-                                                if (data['campus'] != null && (data['campus'] as List).isNotEmpty)
-                                                  _buildInfoChip('Campos', (data['campus'] as List).join(', '), Icons.category),
-                                                
                                                 const SizedBox(height: 16),
-                                                
-                                                // Botones de acción
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.end,
-                                                  children: [
-                                                    // Botón Editar
-                                                    ElevatedButton.icon(
-                                                      onPressed: () => _editarPlaneacion(data, doc.id),
-                                                      icon: const Icon(Icons.edit, size: 16),
-                                                      label: const Text('Editar'),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: const Color(0xFF6A4C93),
-                                                        foregroundColor: Colors.white,
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius: BorderRadius.circular(8),
-                                                        ),
-                                                        padding: const EdgeInsets.symmetric(
-                                                          horizontal: 12,
-                                                          vertical: 8,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    
-                                                    const SizedBox(width: 8),
-                                                    
-                                                    // Botón Eliminar
-                                                    ElevatedButton.icon(
-                                                      onPressed: () => _eliminarPlaneacion(
-                                                        doc.id,
-                                                        data['titulo'] ?? 'Planeación sin título',
-                                                      ),
-                                                      icon: const Icon(Icons.delete, size: 16),
-                                                      label: const Text('Eliminar'),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: Colors.red[400],
-                                                        foregroundColor: Colors.white,
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius: BorderRadius.circular(8),
-                                                        ),
-                                                        padding: const EdgeInsets.symmetric(
-                                                          horizontal: 12,
-                                                          vertical: 8,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
+                                                Text(
+                                                  'Error: ${snapshot.error}',
+                                                  style: const TextStyle(
+                                                    color: Colors.red,
+                                                    fontFamily: 'ComicNeue',
+                                                  ),
+                                                  textAlign: TextAlign.center,
                                                 ),
                                               ],
                                             ),
-                                          ),
+                                          );
+                                        }
+
+                                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                          return Center(
+                                            child: Column(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.school_outlined,
+                                                  size: 80,
+                                                  color: Colors.grey[300],
+                                                ),
+                                                const SizedBox(height: 16),
+                                                const Text(
+                                                  '¡Comienza tu primera planeación!',
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF6A4C93),
+                                                    fontFamily: 'ComicNeue',
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                const Text(
+                                                  'Aún no has creado ninguna planeación.\nPresiona el botón + para comenzar.',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    color: Colors.grey,
+                                                    fontFamily: 'ComicNeue',
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }
+
+                                        return ListView.builder(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                                          itemCount: snapshot.data!.docs.length,
+                                          itemBuilder: (context, index) {
+                                            DocumentSnapshot doc = snapshot.data!.docs[index];
+                                            Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+                                            
+                                            return Container(
+                                              margin: const EdgeInsets.only(bottom: 16),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(16),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black.withOpacity(0.08),
+                                                    blurRadius: 10,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ],
+                                                border: Border.all(
+                                                  color: const Color(0xFF6A4C93).withOpacity(0.2),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(16),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    // Título y fecha
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: Text(
+                                                            data['titulo'] ?? 'Planeación sin título',
+                                                            style: const TextStyle(
+                                                              fontSize: 18,
+                                                              fontWeight: FontWeight.bold,
+                                                              color: Color(0xFF6A4C93),
+                                                              fontFamily: 'ComicNeue',
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          _formatearFecha(data['fecha_creacion']),
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: Colors.grey[600],
+                                                            fontFamily: 'ComicNeue',
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    
+                                                    const SizedBox(height: 8),
+                                                    
+                                                    // Información básica
+                                                    if (data['modalidad'] != null)
+                                                      _buildInfoChip('Modalidad', data['modalidad'], Icons.school),
+                                                    if (data['campus'] != null && (data['campus'] as List).isNotEmpty)
+                                                      _buildInfoChip('Campos', (data['campus'] as List).join(', '), Icons.category),
+                                                    
+                                                    const SizedBox(height: 16),
+                                                    
+                                                    // Botones de acción
+                                                    Row(
+                                                      mainAxisAlignment: MainAxisAlignment.end,
+                                                      children: [
+                                                        // Botón Editar
+                                                        ElevatedButton.icon(
+                                                          onPressed: () => _editarPlaneacion(data, doc.id),
+                                                          icon: const Icon(Icons.edit, size: 16),
+                                                          label: const Text(
+                                                            'Editar',
+                                                            style: TextStyle(fontFamily: 'ComicNeue'),
+                                                          ),
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor: const Color(0xFF6A4C93),
+                                                            foregroundColor: Colors.white,
+                                                            shape: RoundedRectangleBorder(
+                                                              borderRadius: BorderRadius.circular(8),
+                                                            ),
+                                                            padding: const EdgeInsets.symmetric(
+                                                              horizontal: 12,
+                                                              vertical: 8,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        
+                                                        const SizedBox(width: 8),
+                                                        
+                                                        // Botón Eliminar
+                                                        ElevatedButton.icon(
+                                                          onPressed: () => _eliminarPlaneacion(
+                                                            doc.id,
+                                                            data['titulo'] ?? 'Planeación sin título',
+                                                          ),
+                                                          icon: const Icon(Icons.delete, size: 16),
+                                                          label: const Text(
+                                                            'Eliminar',
+                                                            style: TextStyle(fontFamily: 'ComicNeue'),
+                                                          ),
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor: Colors.red[400],
+                                                            foregroundColor: Colors.white,
+                                                            shape: RoundedRectangleBorder(
+                                                              borderRadius: BorderRadius.circular(8),
+                                                            ),
+                                                            padding: const EdgeInsets.symmetric(
+                                                              horizontal: 12,
+                                                              vertical: 8,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         );
                                       },
-                                    );
-                                  },
-                                ),
+                                    ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-      
-      // Botón flotante para agregar nueva planeación
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _crearNuevaPlaneacion,
-        backgroundColor: const Color(0xFF6A4C93),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text(
-          'Nueva Planeación',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontFamily: 'ComicNeue',
+          
+          // ✅ NUEVO - Botón flotante fijo con tooltip
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: AnimatedBuilder(
+              animation: _buttonScaleAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _buttonScaleAnimation.value,
+                  child: Tooltip(
+                    message: 'Nueva Planeación',
+                    textStyle: const TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'ComicNeue',
+                      fontSize: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6A4C93),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6A4C93),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6A4C93).withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: FloatingActionButton(
+                        onPressed: _crearNuevaPlaneacion,
+                        backgroundColor: const Color(0xFF6A4C93),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        child: const Icon(
+                          Icons.add,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-        elevation: 8,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25),
-        ),
+        ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 

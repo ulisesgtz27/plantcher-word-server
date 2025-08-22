@@ -24,7 +24,8 @@ class DetallarUnidadPage extends StatefulWidget {
   State<DetallarUnidadPage> createState() => _DetallarUnidadPageState();
 }
 
-class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
+class _DetallarUnidadPageState extends State<DetallarUnidadPage>
+    with TickerProviderStateMixin {
   final TextEditingController propositoController = TextEditingController();
   final TextEditingController relevanciaController = TextEditingController();
   final TextEditingController lecturaRealidadController = TextEditingController();
@@ -47,21 +48,39 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
   final TextEditingController produccionInput = TextEditingController();
 
   String? ejeSeleccionado;
+  // ✅ CORREGIDO - Lista de ejes con acentos y sin errores tipográficos
   final List<String> ejes = [
-    "Inclusion",
-    "Pensamiento critico",
-    "Interculturalidad critica",
-    "Igualdad de genero",
+    "Inclusión",
+    "Pensamiento crítico",
+    "Interculturalidad crítica",
+    "Igualdad de género",
     "Vida saludable",
-    "Apropiacion de las culturas a traves de la lectura y la escritura",
-    "Artes y experiencias esteticas"
+    "Apropiación de las culturas a través de la lectura y la escritura",
+    "Artes y experiencias estéticas"
   ];
 
   final Map<String, TextEditingController> relacionPorCampo = {};
 
+  // ✅ AGREGADO - Controladores de animación
+  late AnimationController _fadeAnimationController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
+    
+    // ✅ AGREGADO - Inicializar animación
+    _fadeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeAnimationController, curve: Curves.easeInOut),
+    );
+    
+    _fadeAnimationController.forward();
+    
     for (final campo in widget.campus) {
       relacionPorCampo[campo] = TextEditingController();
     }
@@ -69,6 +88,27 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
     if (widget.isEditing && widget.planeacionId != null) {
       _cargarDatosExistentes();
     }
+  }
+
+  @override
+  void dispose() {
+    _fadeAnimationController.dispose();
+    propositoController.dispose();
+    relevanciaController.dispose();
+    lecturaRealidadController.dispose();
+    identificacionTramaController.dispose();
+    planificacionController.dispose();
+    exploracionController.dispose();
+    participacionController.dispose();
+    conclusionController.dispose();
+    variantesController.dispose();
+    materialInput.dispose();
+    espacioInput.dispose();
+    produccionInput.dispose();
+    for (final controller in relacionPorCampo.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _cargarDatosExistentes() async {
@@ -126,6 +166,9 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
         SnackBar(
           content: Text('Error al cargar datos: $e'),
           backgroundColor: Colors.red,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -178,13 +221,31 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
           .update(data);
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Detalle actualizado correctamente!')),
+        SnackBar(
+          content: const Text(
+            '¡Detalle actualizado correctamente!',
+            style: TextStyle(fontFamily: 'ComicNeue'),
+          ),
+          backgroundColor: Colors.green,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       );
     } else {
       await FirebaseFirestore.instance.collection('detalles_unidad').add(data);
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Detalle guardado correctamente!')),
+        SnackBar(
+          content: const Text(
+            '¡Detalle guardado correctamente!',
+            style: TextStyle(fontFamily: 'ComicNeue'),
+          ),
+          backgroundColor: Colors.green,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       );
     }
   }
@@ -230,6 +291,437 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: [
+          // ✅ HEADER CON DEGRADADO MORADO
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF4A148C), // Morado profundo
+                  Color(0xFF6A1B9A), // Morado medio
+                  Color(0xFF8E24AA), // Morado claro
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.isEditing 
+                                ? 'Editar Unidad' 
+                                : 'Unidad Didáctica',
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontFamily: 'ComicNeue',
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black26,
+                                  blurRadius: 10,
+                                  offset: Offset(2, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.titulo,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                              fontFamily: 'ComicNeue',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      tooltip: 'Cerrar',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ✅ CONTENIDO PRINCIPAL CON ANIMACIÓN
+          Expanded(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _seccionContenedor([
+                        _titulo('Periodo de Aplicación'),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _fechaSelector(
+                                'Selecciona fecha de inicio',
+                                fechaInicio,
+                                (picked) => setState(() => fechaInicio = picked),
+                                'Inicio',
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _fechaSelector(
+                                'Selecciona fecha de cierre',
+                                fechaFin,
+                                (picked) => setState(() => fechaFin = picked),
+                                'Cierre',
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (fechaInicio != null && fechaFin != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              periodoAplicacionTexto,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFF4A148C),
+                              ),
+                            ),
+                          ),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Propósito'),
+                        _input(propositoController, 'Escribe el propósito...'),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Relevancia Social'),
+                        _input(relevanciaController, 'Describe la relevancia social...'),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Campos Formativos'),
+                        _infoList(widget.campus),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Contenidos'),
+                        _infoList(_getContenidos()),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Procesos de Desarrollo y Aprendizaje'),
+                        _procesosDesarrollo(),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Relación entre los contenidos curriculares'),
+                        ...widget.campus.map((campo) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                campo,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF4A148C),
+                                  fontFamily: 'ComicNeue',
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: relacionPorCampo[campo],
+                                minLines: 1,
+                                maxLines: 4,
+                                style: const TextStyle(fontFamily: 'ComicNeue'),
+                                decoration: InputDecoration(
+                                  hintText: 'Describe la relación para $campo...',
+                                  hintStyle: const TextStyle(fontFamily: 'ComicNeue'),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: const Color(0xFF4A148C).withOpacity(0.3)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: const Color(0xFF4A148C).withOpacity(0.3)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF4A148C), width: 2),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                      ]),
+                      
+                      // ✅ CORREGIDO - Dropdown del Eje articulador con tema morado
+                      _seccionContenedor([
+                        _titulo('Eje articulador'),
+                        DropdownButtonFormField<String>(
+                          value: ejeSeleccionado,
+                          hint: const Text(
+                            'Selecciona un eje articulador',
+                            style: TextStyle(
+                              fontFamily: 'ComicNeue',
+                              color: Colors.grey,
+                            ),
+                          ),
+                          isExpanded: true,
+                          items: ejes
+                              .map(
+                                (e) => DropdownMenuItem(
+                                  value: e,
+                                  child: Text(
+                                    e,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2, // ✅ CAMBIADO - Permitir más líneas
+                                    style: const TextStyle(
+                                      fontFamily: 'ComicNeue',
+                                      fontSize: 14, // ✅ AGREGADO - Tamaño específico
+                                      color: Colors.black87, // ✅ AGREGADO - Color específico
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => ejeSeleccionado = v),
+                          style: const TextStyle(
+                            fontFamily: 'ComicNeue',
+                            color: Colors.black87, // ✅ AGREGADO - Color del texto seleccionado
+                            fontSize: 14,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Selecciona un eje articulador', // ✅ AGREGADO - Hint en decoration
+                            hintStyle: const TextStyle(
+                              fontFamily: 'ComicNeue',
+                              color: Colors.grey,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16), // ✅ AGREGADO - Padding interno
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: const Color(0xFF4A148C).withOpacity(0.3)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: const Color(0xFF4A148C).withOpacity(0.3)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF4A148C), width: 2),
+                            ),
+                          ),
+                          dropdownColor: Colors.white, // ✅ AGREGADO - Color de fondo del dropdown
+                          icon: const Icon(
+                            Icons.arrow_drop_down,
+                            color: Color(0xFF4A148C),
+                          ), // ✅ AGREGADO - Icono personalizado con color morado
+                        ),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Momentos'),
+                        _subtitulo('1. Lectura de la realidad'),
+                        _input(lecturaRealidadController, 'Describe la lectura de la realidad...'),
+                        _subtitulo('2. Identificación de la trama y complejidad'),
+                        _input(identificacionTramaController, 'Describe la identificación de la trama y complejidad...'),
+                        _subtitulo('3. Planificación y organización del trabajo'),
+                        _input(planificacionController, 'Describe la planificación y organización del trabajo...'),
+                        _subtitulo('4. Exploración y descubrimiento'),
+                        _input(exploracionController, 'Describe la exploración y descubrimiento...'),
+                        _subtitulo('5. Participación activa y horizontal'),
+                        _input(participacionController, 'Describe la participación activa y horizontal...'),
+                        _subtitulo('6. Conclusión de la experiencia (Valoración)'),
+                        _input(conclusionController, 'Describe la conclusión de la experiencia...'),
+                        _subtitulo('Posibles variantes'),
+                        _input(variantesController, 'Describe posibles variantes...'),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Materiales'),
+                        _listaEditable(materiales, materialInput, 'Agregar material'),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Espacios'),
+                        _listaEditable(espacios, espacioInput, 'Agregar espacio'),
+                      ]),
+                      
+                      _seccionContenedor([
+                        _titulo('Producción sugerida'),
+                        _listaEditable(produccion, produccionInput, 'Agregar producción'),
+                      ]),
+                      
+                      const SizedBox(height: 32),
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final result = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                title: Text(
+                                  widget.isEditing 
+                                      ? '¿Deseas actualizar la planeación?' 
+                                      : '¿Deseas guardar la planeación?',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF4A148C),
+                                    fontFamily: 'ComicNeue',
+                                  ),
+                                ),
+                                content: Text(
+                                  widget.isEditing 
+                                      ? 'Se actualizarán todos los cambios realizados.'
+                                      : 'Una vez dado al botón de Sí no podrás cambiar nada.',
+                                  style: const TextStyle(fontFamily: 'ComicNeue'),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(false),
+                                    child: const Text(
+                                      'No',
+                                      style: TextStyle(
+                                        color: Color(0xFF4A148C),
+                                        fontFamily: 'ComicNeue',
+                                      ),
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.of(context).pop(true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF4A148C),
+                                      foregroundColor: Colors.white,
+                                      textStyle: const TextStyle(fontFamily: 'ComicNeue'),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    child: const Text('Sí'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (result == true) {
+                              await guardarDetalleUnidad();
+                              _visualizarPDF();
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4A148C),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                            textStyle: const TextStyle(
+                              fontFamily: 'ComicNeue',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(widget.isEditing 
+                              ? 'Actualizar y Visualizar PDF' 
+                              : 'Visualizar PDF'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _seccionContenedor(List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: const Color(0xFF4A148C).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _fechaSelector(String hint, DateTime? fecha, Function(DateTime) onSelected, String prefix) {
+    return InkWell(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: fecha ?? DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2100),
+        );
+        if (picked != null) {
+          onSelected(picked);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFF4A148C).withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          fecha == null
+              ? hint
+              : '$prefix: ${fecha.day} de ${_mes(fecha.month)} de ${fecha.year}',
+          style: TextStyle(
+            fontSize: 14,
+            color: fecha == null ? Colors.grey : Colors.black,
+            fontFamily: 'ComicNeue',
+          ),
+        ),
+      ),
+    );
+  }
+
   String _mes(int mes) {
     const meses = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -238,241 +730,53 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
     return meses[mes - 1];
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEditing 
-            ? 'Editar: Unidad Didáctica' 
-            : 'Detallar: Unidad Didáctica'),
-        backgroundColor: Colors.green[900],
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _titulo('Periodo de Aplicación'),
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: fechaInicio ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) {
-                        setState(() => fechaInicio = picked);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        fechaInicio == null
-                            ? 'Selecciona fecha de inicio'
-                            : 'Inicio: ${fechaInicio!.day} de ${_mes(fechaInicio!.month)} de ${fechaInicio!.year}',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: fechaFin ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) {
-                        setState(() => fechaFin = picked);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        fechaFin == null
-                            ? 'Selecciona fecha de cierre'
-                            : 'Cierre: ${fechaFin!.day} de ${_mes(fechaFin!.month)} de ${fechaFin!.year}',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (fechaInicio != null && fechaFin != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  periodoAplicacionTexto,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green),
-                ),
-              ),
-            _titulo('Propósito'),
-            _input(propositoController, 'Escribe el propósito...'),
-            _titulo('Relevancia Social'),
-            _input(relevanciaController, 'Describe la relevancia social...'),
-            _titulo('Campos Formativos'),
-            _infoList(widget.campus),
-            _titulo('Contenidos'),
-            _infoList(_getContenidos()),
-            _titulo('Procesos de Desarrollo y Aprendizaje'),
-            _procesosDesarrollo(),
-            _titulo('Relación entre los contenidos curriculares en la propuesta'),
-            ...widget.campus.map((campo) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    campo,
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
-                  ),
-                  TextField(
-                    controller: relacionPorCampo[campo],
-                    minLines: 1,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      hintText: 'Describe la relación para $campo...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ],
-              ),
-            )),
-            _titulo('Eje articulador'),
-            DropdownButtonFormField<String>(
-              value: ejeSeleccionado,
-              isExpanded: true,
-              items: ejes
-                  .map(
-                    (e) => DropdownMenuItem(
-                      value: e,
-                      child: Text(
-                        e,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (v) => setState(() => ejeSeleccionado = v),
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 24),
-            _titulo('Momentos'),
-            _subtitulo('1. Lectura de la realidad'),
-            _input(lecturaRealidadController, 'Describe la lectura de la realidad...'),
-            _subtitulo('2. Identificación de la trama y complejidad'),
-            _input(identificacionTramaController, 'Describe la identificación de la trama y complejidad...'),
-            _subtitulo('3. Planificación y organización del trabajo'),
-            _input(planificacionController, 'Describe la planificación y organización del trabajo...'),
-            _subtitulo('4. Exploración y descubrimiento'),
-            _input(exploracionController, 'Describe la exploración y descubrimiento...'),
-            _subtitulo('5. Participación activa y horizontal'),
-            _input(participacionController, 'Describe la participación activa y horizontal...'),
-            _subtitulo('6. Conclusión de la experiencia (Valoración)'),
-            _input(conclusionController, 'Describe la conclusión de la experiencia...'),
-            _subtitulo('Posibles variantes'),
-            _input(variantesController, 'Describe posibles variantes...'),
-            const SizedBox(height: 24),
-            _titulo('Materiales'),
-            _listaEditable(materiales, materialInput, 'Agregar material'),
-            _titulo('Espacios'),
-            _listaEditable(espacios, espacioInput, 'Agregar espacio'),
-            _titulo('Producción sugerida'),
-            _listaEditable(produccion, produccionInput, 'Agregar producción'),
-            const SizedBox(height: 32),
-            Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  final result = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text(widget.isEditing 
-                          ? '¿Deseas actualizar la planeación?' 
-                          : '¿Deseas guardar la planeación?'),
-                      content: Text(widget.isEditing 
-                          ? 'Se actualizarán todos los cambios realizados.'
-                          : 'Una vez dado al botón de Sí no podrás cambiar nada.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: const Text('No'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[900],
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Sí'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (result == true) {
-                    await guardarDetalleUnidad();
-                    _visualizarPDF();
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[900],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                ),
-                child: Text(widget.isEditing 
-                    ? 'Actualizar y Visualizar PDF' 
-                    : 'Visualizar PDF'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _titulo(String t) => Padding(
-        padding: const EdgeInsets.only(top: 24, bottom: 8),
+        padding: const EdgeInsets.only(bottom: 16),
         child: Text(
           t,
           style: const TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Color(0xFF4A148C),
+            fontFamily: 'ComicNeue',
+          ),
         ),
       );
 
   Widget _subtitulo(String t) => Padding(
-        padding: const EdgeInsets.only(top: 12, bottom: 4),
+        padding: const EdgeInsets.only(top: 16, bottom: 8),
         child: Text(
           t,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            fontFamily: 'ComicNeue',
+          ),
         ),
       );
 
   Widget _input(TextEditingController c, String hint) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: 16),
         child: TextField(
           controller: c,
           minLines: 1,
           maxLines: 4,
+          style: const TextStyle(fontFamily: 'ComicNeue'),
           decoration: InputDecoration(
             hintText: hint,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            hintStyle: const TextStyle(fontFamily: 'ComicNeue'),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: const Color(0xFF4A148C).withOpacity(0.3)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: const Color(0xFF4A148C).withOpacity(0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF4A148C), width: 2),
+            ),
           ),
         ),
       );
@@ -482,11 +786,27 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: items
-              .map((e) => Row(
-                    children: [
-                      const Text('• ', style: TextStyle(fontSize: 18)),
-                      Expanded(child: Text(e)),
-                    ],
+              .map((e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '• ',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Color(0xFF4A148C),
+                            fontFamily: 'ComicNeue',
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            e,
+                            style: const TextStyle(fontFamily: 'ComicNeue'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ))
               .toList(),
         ),
@@ -501,23 +821,42 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
         padding: const EdgeInsets.only(top: 8, bottom: 4),
         child: Text(
           campoNombre,
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF4A148C),
+            fontFamily: 'ComicNeue',
+          ),
         ),
       ));
       gradosPorContenido.forEach((contenido, grados) {
         widgets.add(Padding(
           padding: const EdgeInsets.only(left: 8, top: 2),
-          child: Text(contenido, style: const TextStyle(fontWeight: FontWeight.bold)),
+          child: Text(
+            contenido,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontFamily: 'ComicNeue',
+            ),
+          ),
         ));
         (grados as Map<String, dynamic>).forEach((grado, elementos) {
           widgets.add(Padding(
             padding: const EdgeInsets.only(left: 24, top: 2),
-            child: Text('Grado $grado:', style: const TextStyle(fontStyle: FontStyle.italic)),
+            child: Text(
+              'Grado $grado:',
+              style: const TextStyle(
+                fontStyle: FontStyle.italic,
+                fontFamily: 'ComicNeue',
+              ),
+            ),
           ));
           for (final el in (elementos as List)) {
             widgets.add(Padding(
               padding: const EdgeInsets.only(left: 36, top: 1),
-              child: Text('• $el'),
+              child: Text(
+                '• $el',
+                style: const TextStyle(fontFamily: 'ComicNeue'),
+              ),
             ));
           }
         });
@@ -533,26 +872,58 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...lista.map((e) => Row(
-              children: [
-                const Text('• ', style: TextStyle(fontSize: 18)),
-                Expanded(child: Text(e)),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 18),
-                  onPressed: () {
-                    setState(() => lista.remove(e));
-                  },
-                )
-              ],
+        ...lista.map((e) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  const Text(
+                    '• ',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Color(0xFF4A148C),
+                      fontFamily: 'ComicNeue',
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      e,
+                      style: const TextStyle(fontFamily: 'ComicNeue'),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete,
+                      size: 18,
+                      color: Colors.red,
+                    ),
+                    onPressed: () {
+                      setState(() => lista.remove(e));
+                    },
+                  )
+                ],
+              ),
             )),
         Row(
           children: [
             Expanded(
               child: TextField(
                 controller: controller,
+                style: const TextStyle(fontFamily: 'ComicNeue'),
                 decoration: InputDecoration(
                   hintText: hint,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  hintStyle: const TextStyle(fontFamily: 'ComicNeue'),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: const Color(0xFF4A148C).withOpacity(0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: const Color(0xFF4A148C).withOpacity(0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF4A148C), width: 2),
+                  ),
                 ),
                 onSubmitted: (v) {
                   if (v.trim().isNotEmpty) {
@@ -565,7 +936,10 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage> {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.add_circle, color: Colors.green),
+              icon: const Icon(
+                Icons.add_circle,
+                color: Color(0xFF4A148C),
+              ),
               onPressed: () {
                 if (controller.text.trim().isNotEmpty) {
                   setState(() {

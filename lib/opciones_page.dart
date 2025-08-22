@@ -167,312 +167,375 @@ class _OpcionesPageState extends State<OpcionesPage>
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Elige una opción',
-          style: TextStyle(
-            fontFamily: 'ComicNeue',
-            fontWeight: FontWeight.bold,
-            color: Colors.deepPurple,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.deepPurple),
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              AnimatedSize(
-                duration: animDuration,
-                curve: Curves.easeInOut,
-                child: paso >= 0
-                    ? OptionInputBlock(
-                        label: 'Nombre de la planeación',
-                        controller: nombreController,
-                        hintText: 'Escribe el nombre...',
-                        enabled: paso == 0,
-                        onContinue: () {
-                          if (nombreController.text.isNotEmpty) {
-                            setState(() => paso = 1);
-                          }
-                        },
-                        onBack: null,
-                      )
-                    : const SizedBox.shrink(),
+      body: Column(
+        children: [
+          // ✅ HEADER CON DEGRADADO CORREGIDO
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF6A4C93), // Morado profundo
+                  Color(0xFF9C89B8), // Morado medio
+                  Color(0xFFB8A9C9), // Morado claro
+                ],
               ),
-              AnimatedSize(
-                duration: animDuration,
-                curve: Curves.easeInOut,
-                child: paso >= 1
-                    ? OptionDropdownBlock(
-                        label: 'Modalidad',
-                        value: modalidadSeleccionada != null &&
-                                modalidades.contains(modalidadSeleccionada)
-                            ? modalidadSeleccionada
-                            : (modalidades.isNotEmpty
-                                ? modalidades.first
-                                : null),
-                        items: modalidades,
-                        enabled: paso == 1,
-                        onChanged: (value) {
-                          setState(() {
-                            modalidadSeleccionada = value;
-                          });
-                        },
-                        onContinue: () {
-                          if (modalidadSeleccionada == null &&
-                              modalidades.isNotEmpty) {
-                            setState(() {
-                              modalidadSeleccionada = modalidades.first;
-                              paso = 2;
-                            });
-                          } else if (modalidadSeleccionada != null) {
-                            setState(() => paso = 2);
-                          }
-                        },
-                        onBack: () {
-                          setState(() => paso = 0);
-                        },
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              AnimatedSize(
-                duration: animDuration,
-                curve: Curves.easeInOut,
-                child: paso >= 2
-                    ? OptionCampusMultiBlock(
-                        campus: campus,
-                        campusSeleccionados: campusSeleccionados,
-                        enabled: paso == 2,
-                        onCampusChanged: (value) async {
-                          setState(() {
-                            campusSeleccionados = value;
-                            contenidosSeleccionadosPorCampo.clear();
-                            gradosSeleccionadosPorCampo.clear();
-                            seleccionGradosPorCampo.clear();
-                          });
-                          await cargarContenidosYProcesos(value);
-                        },
-                        onContinue: () {
-                          if (campusSeleccionados.isNotEmpty) {
-                            setState(() => paso = 3);
-                          }
-                        },
-                        onBack: () {
-                          setState(() => paso = 1);
-                        },
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              AnimatedSize(
-                duration: animDuration,
-                curve: Curves.easeInOut,
-                child: paso >= 3
-                    ? OptionContenidoMultiBlock(
-                        procesosPorCampo: procesosPorCampo,
-                        contenidosSeleccionadosPorCampo:
-                            contenidosSeleccionadosPorCampo,
-                        seleccionGradosPorCampo: seleccionGradosPorCampo,
-                        gradosSeleccionadosPorCampo:
-                            gradosSeleccionadosPorCampo,
-                        enabled: paso == 3,
-                        onContenidoChanged: (campo, lista) {
-                          setState(() {
-                            contenidosSeleccionadosPorCampo[campo] = lista;
-                            gradosSeleccionadosPorCampo[campo]
-                                ?.removeWhere((k, v) => !lista.contains(k));
-                            seleccionGradosPorCampo[campo]
-                                ?.removeWhere((k, v) => !lista.contains(k));
-                          });
-                        },
-                        onGradosChanged: (campo, contenido, grados) {
-                          setState(() {
-                            gradosSeleccionadosPorCampo.putIfAbsent(
-                                campo, () => {});
-                            gradosSeleccionadosPorCampo[campo]![contenido] =
-                                grados;
-                            seleccionGradosPorCampo.putIfAbsent(
-                                campo, () => {});
-                            seleccionGradosPorCampo[campo]!
-                                .putIfAbsent(contenido, () => {});
-                            seleccionGradosPorCampo[campo]![contenido]!
-                                .removeWhere((g, v) => !grados.contains(g));
-                          });
-                        },
-                        onGradoChanged: (campo, contenido, grado, elementos) {
-                          setState(() {
-                            seleccionGradosPorCampo.putIfAbsent(
-                                campo, () => {});
-                            seleccionGradosPorCampo[campo]!
-                                .putIfAbsent(contenido, () => {});
-                            seleccionGradosPorCampo[campo]![contenido]![grado] =
-                                elementos;
-                          });
-                        },
-                        onContinue: () {
-                          setState(() => paso = 4);
-                        },
-                        onBack: () {
-                          setState(() => paso = 2);
-                        },
-                        onMostrarTextoCompleto: _mostrarTextoCompleto,
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              AnimatedSize(
-                duration: animDuration,
-                curve: Curves.easeInOut,
-                child: paso >= 4
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 40.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() => paso = 3);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey.shade300,
-                                foregroundColor: Colors.deepPurple,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 16),
-                                textStyle: const TextStyle(
-                                  fontFamily: 'ComicNeue',
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0), // ✅ REDUCIDO EL PADDING
+                child: Row(
+                  children: [
+                    // ✅ EXPANDIDO PARA EVITAR OVERFLOW
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Nueva Planeación',
+                            style: TextStyle(
+                              fontSize: 28, // ✅ REDUCIDO DE 32 A 28
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontFamily: 'ComicNeue',
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black26,
+                                  blurRadius: 10,
+                                  offset: Offset(2, 2),
                                 ),
-                              ),
-                              child: const Text('Atrás'),
+                              ],
                             ),
-                            ElevatedButton(
-                              onPressed: () async {
-                                await guardarPlaneacion();
-                                final List<Map<String, dynamic>>
-                                    contenidosList =
-                                    contenidosSeleccionadosPorCampo.entries
-                                        .map((entry) {
-                                  return {
-                                    "campo": entry.key,
-                                    "contenidos": entry.value,
-                                  };
-                                }).toList();
+                          ),
+                          const SizedBox(height: 4), // ✅ ESPACIO PEQUEÑO
+                          const Text(
+                            'Configura tu planeación paso a paso',
+                            style: TextStyle(
+                              fontSize: 14, // ✅ REDUCIDO DE 16 A 14
+                              color: Colors.white70,
+                              fontFamily: 'ComicNeue',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // ✅ ICONO X MÁS PEQUEÑO Y SIN PADDING EXTRA
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 20, // ✅ REDUCIDO DE 28 A 20
+                      ),
+                      tooltip: 'Cerrar',
+                      padding: EdgeInsets.zero, // ✅ ELIMINADO EL PADDING
+                      constraints: const BoxConstraints(), // ✅ SIN RESTRICCIONES DE TAMAÑO
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
-                                final List<Map<String, dynamic>>
-                                    seleccionGradosList =
-                                    seleccionGradosPorCampo.entries
-                                        .map((campoEntry) {
-                                  return {
-                                    "campo": campoEntry.key,
-                                    "gradosPorContenido": campoEntry.value,
-                                  };
-                                }).toList();
-
-                                if (modalidadSeleccionada ==
-                                    "Aprendizaje basado en el juego") {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DetallarABJPage(
-                                        titulo: nombreController.text,
-                                        campus: campusSeleccionados,
-                                        contenidos: contenidosList,
-                                        seleccionGrados: seleccionGradosList,
-                                      ),
-                                    ),
-                                  );
-                                } else if (modalidadSeleccionada ==
-                                    "Centros de interés") {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          DetallarCentrosInteresPage(
-                                        titulo: nombreController.text,
-                                        campus: campusSeleccionados,
-                                        contenidos: contenidosList,
-                                        seleccionGrados: seleccionGradosList,
-                                      ),
-                                    ),
-                                  );
-                                } else if (modalidadSeleccionada ==
-                                    "Taller crítico") {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DetallarTallerPage(
-                                        titulo: nombreController.text,
-                                        campus: campusSeleccionados,
-                                        contenidos: contenidosList,
-                                        seleccionGrados: seleccionGradosList,
-                                      ),
-                                    ),
-                                  );
-                                } else if (modalidadSeleccionada ==
-                                    "Proyecto") {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DetallarProyectoPage(
-                                        titulo: nombreController.text,
-                                        campus: campusSeleccionados,
-                                        contenidos: contenidosList,
-                                        seleccionGrados: seleccionGradosList,
-                                      ),
-                                    ),
-                                  );
-                                } else if (modalidadSeleccionada ==
-                                    "Unidad didáctica") {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DetallarUnidadPage(
-                                        titulo: nombreController.text,
-                                        campus: campusSeleccionados,
-                                        contenidos: contenidosList,
-                                        seleccionGrados: seleccionGradosList,
-                                      ),
-                                    ),
-                                  );
-                                }else if (modalidadSeleccionada ==
-                                    "Rincones de aprendizaje") {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DetallarRinconesPage(
-                                        titulo: nombreController.text,
-                                        campus: campusSeleccionados,
-                                        contenidos: contenidosList,
-                                        seleccionGrados: seleccionGradosList,
-                                      ),
-                                    ),
-                                  );
+          // ✅ RESTO DEL CONTENIDO SIN CONTENEDOR
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    AnimatedSize(
+                      duration: animDuration,
+                      curve: Curves.easeInOut,
+                      child: paso >= 0
+                          ? OptionInputBlock(
+                              label: 'Nombre de la planeación',
+                              controller: nombreController,
+                              hintText: 'Escribe el nombre...',
+                              enabled: paso == 0,
+                              onContinue: () {
+                                if (nombreController.text.isNotEmpty) {
+                                  setState(() => paso = 1);
                                 }
                               },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 32, vertical: 16),
-                                textStyle: const TextStyle(
-                                  fontFamily: 'ComicNeue',
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
+                              onBack: null,
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    AnimatedSize(
+                      duration: animDuration,
+                      curve: Curves.easeInOut,
+                      child: paso >= 1
+                          ? OptionDropdownBlock(
+                              label: 'Modalidad',
+                              value: modalidadSeleccionada != null &&
+                                      modalidades.contains(modalidadSeleccionada)
+                                  ? modalidadSeleccionada
+                                  : (modalidades.isNotEmpty
+                                      ? modalidades.first
+                                      : null),
+                              items: modalidades,
+                              enabled: paso == 1,
+                              onChanged: (value) {
+                                setState(() {
+                                  modalidadSeleccionada = value;
+                                });
+                              },
+                              onContinue: () {
+                                if (modalidadSeleccionada == null &&
+                                    modalidades.isNotEmpty) {
+                                  setState(() {
+                                    modalidadSeleccionada = modalidades.first;
+                                    paso = 2;
+                                  });
+                                } else if (modalidadSeleccionada != null) {
+                                  setState(() => paso = 2);
+                                }
+                              },
+                              onBack: () {
+                                setState(() => paso = 0);
+                              },
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    AnimatedSize(
+                      duration: animDuration,
+                      curve: Curves.easeInOut,
+                      child: paso >= 2
+                          ? OptionCampusMultiBlock(
+                              campus: campus,
+                              campusSeleccionados: campusSeleccionados,
+                              enabled: paso == 2,
+                              onCampusChanged: (value) async {
+                                setState(() {
+                                  campusSeleccionados = value;
+                                  contenidosSeleccionadosPorCampo.clear();
+                                  gradosSeleccionadosPorCampo.clear();
+                                  seleccionGradosPorCampo.clear();
+                                });
+                                await cargarContenidosYProcesos(value);
+                              },
+                              onContinue: () {
+                                if (campusSeleccionados.isNotEmpty) {
+                                  setState(() => paso = 3);
+                                }
+                              },
+                              onBack: () {
+                                setState(() => paso = 1);
+                              },
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    AnimatedSize(
+                      duration: animDuration,
+                      curve: Curves.easeInOut,
+                      child: paso >= 3
+                          ? OptionContenidoMultiBlock(
+                              procesosPorCampo: procesosPorCampo,
+                              contenidosSeleccionadosPorCampo:
+                                  contenidosSeleccionadosPorCampo,
+                              seleccionGradosPorCampo: seleccionGradosPorCampo,
+                              gradosSeleccionadosPorCampo:
+                                  gradosSeleccionadosPorCampo,
+                              enabled: paso == 3,
+                              onContenidoChanged: (campo, lista) {
+                                setState(() {
+                                  contenidosSeleccionadosPorCampo[campo] = lista;
+                                  gradosSeleccionadosPorCampo[campo]
+                                      ?.removeWhere((k, v) => !lista.contains(k));
+                                  seleccionGradosPorCampo[campo]
+                                      ?.removeWhere((k, v) => !lista.contains(k));
+                                });
+                              },
+                              onGradosChanged: (campo, contenido, grados) {
+                                setState(() {
+                                  gradosSeleccionadosPorCampo.putIfAbsent(
+                                      campo, () => {});
+                                  gradosSeleccionadosPorCampo[campo]![contenido] =
+                                      grados;
+                                  seleccionGradosPorCampo.putIfAbsent(
+                                      campo, () => {});
+                                  seleccionGradosPorCampo[campo]!
+                                      .putIfAbsent(contenido, () => {});
+                                  seleccionGradosPorCampo[campo]![contenido]!
+                                      .removeWhere((g, v) => !grados.contains(g));
+                                });
+                              },
+                              onGradoChanged: (campo, contenido, grado, elementos) {
+                                setState(() {
+                                  seleccionGradosPorCampo.putIfAbsent(
+                                      campo, () => {});
+                                  seleccionGradosPorCampo[campo]!
+                                      .putIfAbsent(contenido, () => {});
+                                  seleccionGradosPorCampo[campo]![contenido]![grado] =
+                                      elementos;
+                                });
+                              },
+                              onContinue: () {
+                                setState(() => paso = 4);
+                              },
+                              onBack: () {
+                                setState(() => paso = 2);
+                              },
+                              onMostrarTextoCompleto: _mostrarTextoCompleto,
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    AnimatedSize(
+                      duration: animDuration,
+                      curve: Curves.easeInOut,
+                      child: paso >= 4
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 40.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      setState(() => paso = 3);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.grey.shade300,
+                                      foregroundColor: Colors.deepPurple,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 24, vertical: 16),
+                                      textStyle: const TextStyle(
+                                        fontFamily: 'ComicNeue',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    child: const Text('Atrás'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      await guardarPlaneacion();
+                                      final List<Map<String, dynamic>>
+                                          contenidosList =
+                                          contenidosSeleccionadosPorCampo.entries
+                                              .map((entry) {
+                                        return {
+                                          "campo": entry.key,
+                                          "contenidos": entry.value,
+                                        };
+                                      }).toList();
+
+                                      final List<Map<String, dynamic>>
+                                          seleccionGradosList =
+                                          seleccionGradosPorCampo.entries
+                                              .map((campoEntry) {
+                                        return {
+                                          "campo": campoEntry.key,
+                                          "gradosPorContenido": campoEntry.value,
+                                        };
+                                      }).toList();
+
+                                      if (modalidadSeleccionada ==
+                                          "Aprendizaje basado en el juego") {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DetallarABJPage(
+                                              titulo: nombreController.text,
+                                              campus: campusSeleccionados,
+                                              contenidos: contenidosList,
+                                              seleccionGrados: seleccionGradosList,
+                                            ),
+                                          ),
+                                        );
+                                      } else if (modalidadSeleccionada ==
+                                          "Centros de interés") {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                DetallarCentrosInteresPage(
+                                              titulo: nombreController.text,
+                                              campus: campusSeleccionados,
+                                              contenidos: contenidosList,
+                                              seleccionGrados: seleccionGradosList,
+                                            ),
+                                          ),
+                                        );
+                                      } else if (modalidadSeleccionada ==
+                                          "Taller crítico") {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DetallarTallerPage(
+                                              titulo: nombreController.text,
+                                              campus: campusSeleccionados,
+                                              contenidos: contenidosList,
+                                              seleccionGrados: seleccionGradosList,
+                                            ),
+                                          ),
+                                        );
+                                      } else if (modalidadSeleccionada ==
+                                          "Proyecto") {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DetallarProyectoPage(
+                                              titulo: nombreController.text,
+                                              campus: campusSeleccionados,
+                                              contenidos: contenidosList,
+                                              seleccionGrados: seleccionGradosList,
+                                            ),
+                                          ),
+                                        );
+                                      } else if (modalidadSeleccionada ==
+                                          "Unidad didáctica") {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DetallarUnidadPage(
+                                              titulo: nombreController.text,
+                                              campus: campusSeleccionados,
+                                              contenidos: contenidosList,
+                                              seleccionGrados: seleccionGradosList,
+                                            ),
+                                          ),
+                                        );
+                                      }else if (modalidadSeleccionada ==
+                                          "Rincones de aprendizaje") {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DetallarRinconesPage(
+                                              titulo: nombreController.text,
+                                              campus: campusSeleccionados,
+                                              contenidos: contenidosList,
+                                              seleccionGrados: seleccionGradosList,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.deepPurple,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 32, vertical: 16),
+                                      textStyle: const TextStyle(
+                                        fontFamily: 'ComicNeue',
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                    child: const Text('Detallar planeación'),
+                                  ),
+                                ],
                               ),
-                              child: const Text('Detallar planeación'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
