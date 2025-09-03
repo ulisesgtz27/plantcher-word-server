@@ -9,6 +9,7 @@ import 'detallar_taller.dart';
 import 'detallar_proyecto.dart';
 import 'detallar_unidad.dart';
 import 'detallar_rincones.dart';
+import 'detallar_situacion.dart'; // ✅ AGREGADO
 
 class PlaneacionesListPage extends StatefulWidget {
   const PlaneacionesListPage({super.key});
@@ -379,6 +380,23 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
         );
         break;
       
+      // ✅ CASO AGREGADO PARA SITUACIÓN DIDÁCTICA
+      case 'situación didáctica':
+        print('📝 Navegando a DetallarSituacionPage');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DetallarSituacionPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              draftData: data,
+              draftId: draftId,
+            ),
+          ),
+        );
+        break;
+      
       default:
         print('❌ Modalidad no reconocida: $modalidad');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -593,6 +611,23 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
           context,
           MaterialPageRoute(
             builder: (_) => DetallarRinconesPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              isEditing: true,
+              planeacionId: planeacionId,
+            ),
+          ),
+        );
+        break;
+        
+      // ✅ CASO AGREGADO PARA SITUACIÓN DIDÁCTICA EN EDICIÓN
+      case "Situación Didáctica":
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetallarSituacionPage(
               titulo: titulo,
               campus: campus,
               contenidos: contenidos,
