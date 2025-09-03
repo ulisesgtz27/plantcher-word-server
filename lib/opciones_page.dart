@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'services/draft_service.dart';
 import 'detallar_abj_page.dart';
 import 'detallar_centros_page.dart';
 import 'detallar_taller.dart';
 import 'detallar_proyecto.dart';
 import 'detallar_unidad.dart';
 import 'detallar_rincones.dart';
+import 'detallar_situacion.dart'; // ✅ NUEVO IMPORT
 
 class OpcionesPage extends StatefulWidget {
-  const OpcionesPage({super.key});
+  final Map<String, dynamic>? draftData;
+  final String? draftId;
+
+  const OpcionesPage({
+    super.key,
+    this.draftData,
+    this.draftId,
+  });
 
   @override
   State<OpcionesPage> createState() => _OpcionesPageState();
@@ -33,11 +42,15 @@ class _OpcionesPageState extends State<OpcionesPage>
   List<String> campus = [];
   bool cargando = true;
 
+  String? currentDraftId;
+  bool isDraftLoaded = false;
+
   final Duration animDuration = const Duration(milliseconds: 400);
 
   @override
   void initState() {
     super.initState();
+    currentDraftId = widget.draftId;
     cargarOpciones();
   }
 
@@ -55,12 +68,156 @@ class _OpcionesPageState extends State<OpcionesPage>
       modalidadSeleccionada = modalidades.first;
     }
 
+    if (widget.draftData != null && !isDraftLoaded) {
+      _loadDraftData();
+    }
+
     setState(() {
       cargando = false;
     });
   }
 
-  // Función para mostrar texto completo en un diálogo
+  // ✅ FUNCIÓN CORREGIDA: _loadDraftData sin errores de tipos
+  void _loadDraftData() {
+    try {
+      print('📋 Cargando datos del borrador...');
+      final data = widget.draftData!;
+      
+      nombreController.text = data['titulo'] ?? '';
+      modalidadSeleccionada = data['modalidad'];
+      campusSeleccionados = List<String>.from(data['campus'] ?? []);
+      
+      if (data['contenidos'] != null) {
+        final contenidos = List<Map<String, dynamic>>.from(data['contenidos']);
+        for (var contenido in contenidos) {
+          final campo = contenido['campo'] as String;
+          final lista = List<String>.from(contenido['contenidos'] ?? []);
+          contenidosSeleccionadosPorCampo[campo] = lista;
+        }
+      }
+      
+      if (data['seleccionGrados'] != null) {
+        final seleccionGrados = List<Map<String, dynamic>>.from(data['seleccionGrados']);
+        for (var seleccion in seleccionGrados) {
+          final campo = seleccion['campo'] as String;
+          final gradosPorContenido = Map<String, dynamic>.from(seleccion['gradosPorContenido'] ?? {});
+          
+          seleccionGradosPorCampo[campo] = {};
+          gradosSeleccionadosPorCampo[campo] = {};
+          
+          for (var contenidoEntry in gradosPorContenido.entries) {
+            final contenido = contenidoEntry.key;
+            final gradosData = Map<String, dynamic>.from(contenidoEntry.value);
+            
+            seleccionGradosPorCampo[campo]![contenido] = {};
+            gradosSeleccionadosPorCampo[campo]![contenido] = <String>{};
+            
+            for (var gradoEntry in gradosData.entries) {
+              final grado = gradoEntry.key;
+              final elementos = List<String>.from(gradoEntry.value ?? []);
+              
+              if (elementos.isNotEmpty) {
+                seleccionGradosPorCampo[campo]![contenido]![grado] = elementos;
+                gradosSeleccionadosPorCampo[campo]![contenido]!.add(grado);
+              }
+            }
+          }
+        }
+      }
+      
+      // ✅ MANEJO SEGURO DEL PASO - Soporta tanto int como string
+      final pasoData = data['paso'];
+      if (pasoData is int) {
+        paso = pasoData;
+        print('✅ Paso cargado como int: $paso');
+      } else if (pasoData is String) {
+        // Convertir string a int basado en el paso
+        switch (pasoData.toLowerCase()) {
+          case 'nombre':
+          case 'titulo':
+            paso = 0;
+            break;
+          case 'modalidad':
+            paso = 1;
+            break;
+          case 'campus':
+            paso = 2;
+            break;
+          case 'contenidos':
+            paso = 3;
+            break;
+          case 'detallar':
+            paso = 4;
+            break;
+          default:
+            paso = _calculateCurrentStep();
+        }
+        print('✅ Paso convertido de string "$pasoData" a int: $paso');
+      } else {
+        paso = _calculateCurrentStep();
+        print('✅ Paso calculado automáticamente: $paso');
+      }
+      
+      // Cargar procesos si hay campus seleccionados
+      if (campusSeleccionados.isNotEmpty) {
+        cargarContenidosYProcesos(campusSeleccionados);
+      }
+      
+      isDraftLoaded = true;
+      print('✅ Datos del borrador cargados exitosamente');
+      
+    } catch (e) {
+      print('❌ Error cargando datos del borrador: $e');
+      paso = _calculateCurrentStep();
+      isDraftLoaded = true;
+    }
+  }
+
+  int _calculateCurrentStep() {
+    if (nombreController.text.isEmpty) return 0;
+    if (modalidadSeleccionada == null) return 1;
+    if (campusSeleccionados.isEmpty) return 2;
+    if (contenidosSeleccionadosPorCampo.isEmpty) return 3;
+    return 4;
+  }
+
+  Future<void> _saveDraft() async {
+    if (nombreController.text.isEmpty && 
+        modalidadSeleccionada == null && 
+        campusSeleccionados.isEmpty) {
+      return;
+    }
+
+    final draftData = {
+      'titulo': nombreController.text,
+      'modalidad': modalidadSeleccionada,
+      'campus': campusSeleccionados,
+      'contenidos': contenidosSeleccionadosPorCampo.entries.map((entry) => {
+        "campo": entry.key,
+        "contenidos": entry.value,
+      }).toList(),
+      'seleccionGrados': seleccionGradosPorCampo.entries.map((campoEntry) => {
+        "campo": campoEntry.key,
+        "gradosPorContenido": campoEntry.value,
+      }).toList(),
+      'paso': paso, // ✅ Siempre será int
+    };
+
+    try {
+      final savedDraftId = await DraftService.saveDraft(
+        modalidad: modalidadSeleccionada ?? 'Sin modalidad',
+        data: draftData,
+        draftId: currentDraftId,
+      );
+      
+      if (savedDraftId != null && currentDraftId == null) {
+        currentDraftId = savedDraftId;
+      }
+    } catch (e) {
+      print('Error guardando borrador: $e');
+    }
+  }
+
   void _mostrarTextoCompleto(String titulo, String texto) {
     showDialog(
       context: context,
@@ -169,50 +326,71 @@ class _OpcionesPageState extends State<OpcionesPage>
     return Scaffold(
       body: Column(
         children: [
-          // ✅ HEADER CON DEGRADADO CORREGIDO
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF6A4C93), // Morado profundo
-                  Color(0xFF9C89B8), // Morado medio
-                  Color(0xFFB8A9C9), // Morado claro
+                  Color(0xFF6A4C93),
+                  Color(0xFF9C89B8),
+                  Color(0xFFB8A9C9),
                 ],
               ),
             ),
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0), // ✅ REDUCIDO EL PADDING
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
                 child: Row(
                   children: [
-                    // ✅ EXPANDIDO PARA EVITAR OVERFLOW
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Nueva Planeación',
-                            style: TextStyle(
-                              fontSize: 28, // ✅ REDUCIDO DE 32 A 28
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontFamily: 'ComicNeue',
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black26,
-                                  blurRadius: 10,
-                                  offset: Offset(2, 2),
+                          Row(
+                            children: [
+                              const Text(
+                                'Nueva Planeación',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'ComicNeue',
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black26,
+                                      blurRadius: 10,
+                                      offset: Offset(2, 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (widget.draftData != null) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'BORRADOR',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'ComicNeue',
+                                    ),
+                                  ),
                                 ),
                               ],
-                            ),
+                            ],
                           ),
-                          const SizedBox(height: 4), // ✅ ESPACIO PEQUEÑO
+                          const SizedBox(height: 4),
                           const Text(
                             'Configura tu planeación paso a paso',
                             style: TextStyle(
-                              fontSize: 14, // ✅ REDUCIDO DE 16 A 14
+                              fontSize: 14,
                               color: Colors.white70,
                               fontFamily: 'ComicNeue',
                             ),
@@ -220,17 +398,16 @@ class _OpcionesPageState extends State<OpcionesPage>
                         ],
                       ),
                     ),
-                    // ✅ ICONO X MÁS PEQUEÑO Y SIN PADDING EXTRA
                     IconButton(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(
                         Icons.close,
                         color: Colors.white,
-                        size: 20, // ✅ REDUCIDO DE 28 A 20
+                        size: 20,
                       ),
                       tooltip: 'Cerrar',
-                      padding: EdgeInsets.zero, // ✅ ELIMINADO EL PADDING
-                      constraints: const BoxConstraints(), // ✅ SIN RESTRICCIONES DE TAMAÑO
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
@@ -238,7 +415,6 @@ class _OpcionesPageState extends State<OpcionesPage>
             ),
           ),
 
-          // ✅ RESTO DEL CONTENIDO SIN CONTENEDOR
           Expanded(
             child: SingleChildScrollView(
               child: Padding(
@@ -257,9 +433,11 @@ class _OpcionesPageState extends State<OpcionesPage>
                               onContinue: () {
                                 if (nombreController.text.isNotEmpty) {
                                   setState(() => paso = 1);
+                                  _saveDraft();
                                 }
                               },
                               onBack: null,
+                              onChanged: () => _saveDraft(),
                             )
                           : const SizedBox.shrink(),
                     ),
@@ -281,6 +459,7 @@ class _OpcionesPageState extends State<OpcionesPage>
                                 setState(() {
                                   modalidadSeleccionada = value;
                                 });
+                                _saveDraft();
                               },
                               onContinue: () {
                                 if (modalidadSeleccionada == null &&
@@ -292,6 +471,7 @@ class _OpcionesPageState extends State<OpcionesPage>
                                 } else if (modalidadSeleccionada != null) {
                                   setState(() => paso = 2);
                                 }
+                                _saveDraft();
                               },
                               onBack: () {
                                 setState(() => paso = 0);
@@ -315,10 +495,12 @@ class _OpcionesPageState extends State<OpcionesPage>
                                   seleccionGradosPorCampo.clear();
                                 });
                                 await cargarContenidosYProcesos(value);
+                                _saveDraft();
                               },
                               onContinue: () {
                                 if (campusSeleccionados.isNotEmpty) {
                                   setState(() => paso = 3);
+                                  _saveDraft();
                                 }
                               },
                               onBack: () {
@@ -347,6 +529,7 @@ class _OpcionesPageState extends State<OpcionesPage>
                                   seleccionGradosPorCampo[campo]
                                       ?.removeWhere((k, v) => !lista.contains(k));
                                 });
+                                _saveDraft();
                               },
                               onGradosChanged: (campo, contenido, grados) {
                                 setState(() {
@@ -361,6 +544,7 @@ class _OpcionesPageState extends State<OpcionesPage>
                                   seleccionGradosPorCampo[campo]![contenido]!
                                       .removeWhere((g, v) => !grados.contains(g));
                                 });
+                                _saveDraft();
                               },
                               onGradoChanged: (campo, contenido, grado, elementos) {
                                 setState(() {
@@ -371,9 +555,11 @@ class _OpcionesPageState extends State<OpcionesPage>
                                   seleccionGradosPorCampo[campo]![contenido]![grado] =
                                       elementos;
                                 });
+                                _saveDraft();
                               },
                               onContinue: () {
                                 setState(() => paso = 4);
+                                _saveDraft();
                               },
                               onBack: () {
                                 setState(() => paso = 2);
@@ -411,6 +597,12 @@ class _OpcionesPageState extends State<OpcionesPage>
                                   ElevatedButton(
                                     onPressed: () async {
                                       await guardarPlaneacion();
+                                      
+                                      // ✅ LÍNEA CORREGIDA: 
+                                      if (currentDraftId != null) {
+                                        await DraftService.markAsCompleted(currentDraftId!);
+                                      }
+                                      
                                       final List<Map<String, dynamic>>
                                           contenidosList =
                                           contenidosSeleccionadosPorCampo.entries
@@ -497,12 +689,25 @@ class _OpcionesPageState extends State<OpcionesPage>
                                             ),
                                           ),
                                         );
-                                      }else if (modalidadSeleccionada ==
+                                      } else if (modalidadSeleccionada ==
                                           "Rincones de aprendizaje") {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) => DetallarRinconesPage(
+                                              titulo: nombreController.text,
+                                              campus: campusSeleccionados,
+                                              contenidos: contenidosList,
+                                              seleccionGrados: seleccionGradosList,
+                                            ),
+                                          ),
+                                        );
+                                      } else if (modalidadSeleccionada ==
+                                          "Situación Didáctica") { // ✅ NUEVO CASE
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DetallarSituacionPage(
                                               titulo: nombreController.text,
                                               campus: campusSeleccionados,
                                               contenidos: contenidosList,
@@ -541,7 +746,89 @@ class _OpcionesPageState extends State<OpcionesPage>
   }
 }
 
-// Bloque para seleccionar campus
+class OptionInputBlock extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final String hintText;
+  final bool enabled;
+  final VoidCallback onContinue;
+  final VoidCallback? onBack;
+  final VoidCallback? onChanged;
+
+  const OptionInputBlock({
+    super.key,
+    required this.label,
+    required this.controller,
+    required this.hintText,
+    required this.enabled,
+    required this.onContinue,
+    this.onBack,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+        opacity: enabled ? 1 : 0.6,
+        child: IgnorePointer(
+          ignoring: !enabled,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontFamily: 'ComicNeue',
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                enabled: enabled,
+                onChanged: (value) => onChanged?.call(),
+                decoration: InputDecoration(
+                  hintText: hintText,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (onBack != null)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: enabled ? onBack : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade300,
+                          foregroundColor: Colors.deepPurple,
+                        ),
+                        child: const Text('Atrás'),
+                      ),
+                    ),
+                  if (onBack != null) const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: enabled ? onContinue : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Continuar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ));
+  }
+}
+
 class OptionCampusMultiBlock extends StatelessWidget {
   final List<String> campus;
   final List<String> campusSeleccionados;
@@ -633,7 +920,6 @@ class OptionCampusMultiBlock extends StatelessWidget {
   }
 }
 
-// Bloque para seleccionar contenidos, grados y elementos agrupado por campo
 class OptionContenidoMultiBlock extends StatelessWidget {
   final Map<String, List<Map<String, dynamic>>> procesosPorCampo;
   final Map<String, List<String>> contenidosSeleccionadosPorCampo;
@@ -872,88 +1158,6 @@ class OptionContenidoMultiBlock extends StatelessWidget {
   }
 }
 
-// Bloque para ingresar texto
-class OptionInputBlock extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final String hintText;
-  final bool enabled;
-  final VoidCallback onContinue;
-  final VoidCallback? onBack;
-
-  const OptionInputBlock({
-    super.key,
-    required this.label,
-    required this.controller,
-    required this.hintText,
-    required this.enabled,
-    required this.onContinue,
-    this.onBack,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-        opacity: enabled ? 1 : 0.6,
-        child: IgnorePointer(
-          ignoring: !enabled,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontFamily: 'ComicNeue',
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                enabled: enabled,
-                decoration: InputDecoration(
-                  hintText: hintText,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (onBack != null)
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: enabled ? onBack : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade300,
-                          foregroundColor: Colors.deepPurple,
-                        ),
-                        child: const Text('Atrás'),
-                      ),
-                    ),
-                  if (onBack != null) const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: enabled ? onContinue : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Continuar'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ));
-  }
-}
-
-// Bloque para seleccionar modalidad
 class OptionDropdownBlock extends StatelessWidget {
   final String label;
   final String? value;

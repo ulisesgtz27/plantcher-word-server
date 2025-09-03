@@ -82,6 +82,7 @@ def format_table_content(table):
 # Configuración de momentos para cada modalidad
 MODALIDADES_CONFIG = {
     'abj': ['planteamiento_juego', 'desarrollo_actividades', 'compartamos_experiencia', 'comunidad_juego'],
+    'aprendizaje basado en el juego': ['planteamiento_juego', 'desarrollo_actividades', 'compartamos_experiencia', 'comunidad_juego'],
     'centros': ['contacto_realidad', 'identificacion_integracion', 'expresion'],
     'centros de interes': ['contacto_realidad', 'identificacion_integracion', 'expresion'],
     'centros de interés': ['contacto_realidad', 'identificacion_integracion', 'expresion'],
@@ -93,7 +94,10 @@ MODALIDADES_CONFIG = {
     'proyecto': ['punto_partida', 'planeacion', 'a_trabajar', 'comunicamos_logros', 'reflexion_aprendizaje'],
     'unidad': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion', 'participacion', 'conclusion'],
     'unidad didactica': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion', 'participacion', 'conclusion'],
-    'unidad didáctica': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion', 'participacion', 'conclusion']
+    'unidad didáctica': ['lectura_realidad', 'identificacion_trama', 'planificacion', 'exploracion', 'participacion', 'conclusion'],
+    # ✅ NUEVA MODALIDAD AGREGADA
+    'situacion didactica': ['inicio', 'desarrollo', 'cierre'],
+    'situación didáctica': ['inicio', 'desarrollo', 'cierre']
 }
 
 # Mapeo de nombres internos a nombres bonitos para mostrar en el Word
@@ -136,14 +140,28 @@ NOMBRES_MOMENTOS = {
     'planificacion': '3. Planificación y organización del trabajo',
     'exploracion': '4. Exploración y descubrimiento',
     'participacion': '5. Participación activa y horizontal',
-    'conclusion': '6. Conclusión de la experiencia (Valoración)'
+    'conclusion': '6. Conclusión de la experiencia (Valoración)',
+    
+    # ✅ SITUACIÓN DIDÁCTICA - NUEVOS MOMENTOS
+    'inicio': '1. Inicio',
+    'desarrollo': '2. Desarrollo', 
+    'cierre': '3. Cierre'
 }
+
+# ✅ NUEVA FUNCIÓN: Detectar si es modalidad que requiere tabla simplificada
+def es_modalidad_simplificada(modalidad):
+    """Detecta si la modalidad necesita tabla simplificada (sin relación de contenidos ni eje articulador)"""
+    modalidades_simplificadas = [
+        'situacion didactica', 
+        'situación didáctica'
+    ]
+    return modalidad.lower() in modalidades_simplificadas
 
 @app.route('/', methods=['GET'])
 def home():
     """Endpoint raíz para verificar que el servidor está funcionando"""
     logger.info("HOME: Endpoint raíz accedido")
-    return jsonify({'status': 'OK', 'message': 'Servidor Plantcher Word está funcionando', 'version': '2.0 - Backend Separado'})
+    return jsonify({'status': 'OK', 'message': 'Servidor Plantcher Word está funcionando', 'version': '2.1 - Con Situación Didáctica'})
 
 @app.route('/test', methods=['GET'])
 def test_connection():
@@ -170,7 +188,7 @@ def get_modalidades():
 
 @app.route('/generar-word', methods=['POST'])
 def generar_word():
-    """Generar documento Word con la plantilla ABJ manteniendo estructura original"""
+    """Generar documento Word con soporte para todas las modalidades incluida Situación Didáctica"""
     try:
         data = request.get_json()
         
@@ -220,17 +238,25 @@ def generar_word():
         format_table_content(table1)
         doc.add_paragraph("")
 
-        # === TABLA 2: CONTENIDO CURRICULAR ===
+        # === TABLA 2: CONTENIDO CURRICULAR (Adaptable según modalidad) ===
         campos = data.get('camposFormativos', [])
         contenidos = data.get('contenidos', [])
         procesos = data.get('procesosDesarrollo', [])
         relaciones = data.get('relacionContenidos', {})
         
         max_rows = max(len(campos), len(contenidos), len(procesos))
-        table2 = doc.add_table(rows=max_rows + 1, cols=5)
+        
+        # ✅ LÓGICA ADAPTATIVA: Tabla simplificada para Situación Didáctica
+        if es_modalidad_simplificada(modalidad):
+            # Tabla de 3 columnas (sin relación de contenidos ni eje articulador)
+            table2 = doc.add_table(rows=max_rows + 1, cols=3)
+            headers2 = ['Campos Formativos', 'Contenidos', 'Procesos de Desarrollo y Aprendizaje']
+        else:
+            # Tabla completa de 5 columnas
+            table2 = doc.add_table(rows=max_rows + 1, cols=5)
+            headers2 = ['Campos Formativos', 'Contenidos', 'Procesos de Desarrollo', 'Relación de Contenidos', 'Eje Articulador']
         
         # Headers
-        headers2 = ['Campos Formativos', 'Contenidos', 'Procesos de Desarrollo', 'Relación de Contenidos', 'Eje Articulador']
         for i, header in enumerate(headers2):
             table2.rows[0].cells[i].text = header
         
@@ -251,14 +277,16 @@ def generar_word():
                         for el in elementos:
                             procesos_str += f"    • {el}\n"
             
-            relacion = relaciones.get(campo, '') if campo in relaciones else ''
-            eje = data.get('ejeArticulador', '') if i == 0 else ''
-            
             table2.rows[i + 1].cells[0].text = campo
             table2.rows[i + 1].cells[1].text = contenido
             table2.rows[i + 1].cells[2].text = procesos_str.strip()
-            table2.rows[i + 1].cells[3].text = relacion
-            table2.rows[i + 1].cells[4].text = eje
+            
+            # ✅ Solo agregar columnas adicionales si NO es modalidad simplificada
+            if not es_modalidad_simplificada(modalidad):
+                relacion = relaciones.get(campo, '') if campo in relaciones else ''
+                eje = data.get('ejeArticulador', '') if i == 0 else ''
+                table2.rows[i + 1].cells[3].text = relacion
+                table2.rows[i + 1].cells[4].text = eje
         
         set_table_borders(table2)
         format_table_headers(table2)
@@ -347,9 +375,10 @@ def generar_word():
         doc.save(buffer)
         buffer.seek(0)
         
-        filename = f"planeacion_{modalidad}.docx"
+        filename = f"planeacion_{modalidad.replace(' ', '_')}.docx"
         
         logger.info(f"Generando archivo para modalidad: {modalidad}")
+        logger.info(f"Modalidad simplificada: {es_modalidad_simplificada(modalidad)}")
         
         return send_file(
             buffer,
@@ -372,4 +401,5 @@ if __name__ == '__main__':
     logger.info("   GET  /test        - Prueba de conectividad")
     logger.info("   POST /test-post   - Prueba de solicitudes POST")
     logger.info("   GET  /modalidades - Lista de modalidades")
+    logger.info("✅ NUEVA MODALIDAD SOPORTADA: Situación Didáctica")
     app.run(debug=False, host='0.0.0.0', port=port)

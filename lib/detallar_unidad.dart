@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'services/draft_service.dart';
 import 'pages/visualizar_pdf_page.dart';
 
 class DetallarUnidadPage extends StatefulWidget {
@@ -9,6 +10,8 @@ class DetallarUnidadPage extends StatefulWidget {
   final List<Map<String, dynamic>> seleccionGrados;
   final bool isEditing;
   final String? planeacionId;
+  final Map<String, dynamic>? draftData; // ✅ NUEVO PARÁMETRO
+  final String? draftId; // ✅ NUEVO PARÁMETRO
 
   const DetallarUnidadPage({
     super.key,
@@ -18,6 +21,8 @@ class DetallarUnidadPage extends StatefulWidget {
     required this.seleccionGrados,
     this.isEditing = false,
     this.planeacionId,
+    this.draftData, // ✅ NUEVO PARÁMETRO
+    this.draftId, // ✅ NUEVO PARÁMETRO
   });
 
   @override
@@ -48,7 +53,6 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
   final TextEditingController produccionInput = TextEditingController();
 
   String? ejeSeleccionado;
-  // ✅ CORREGIDO - Lista de ejes con acentos y sin errores tipográficos
   final List<String> ejes = [
     "Inclusión",
     "Pensamiento crítico",
@@ -61,7 +65,10 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
 
   final Map<String, TextEditingController> relacionPorCampo = {};
 
-  // ✅ AGREGADO - Controladores de animación
+  // ✅ NUEVO: Variables para el sistema de borradores
+  String? currentDraftId;
+  bool isDraftLoaded = false;
+
   late AnimationController _fadeAnimationController;
   late Animation<double> _fadeAnimation;
 
@@ -69,7 +76,8 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
   void initState() {
     super.initState();
     
-    // ✅ AGREGADO - Inicializar animación
+    currentDraftId = widget.draftId; // ✅ NUEVO
+    
     _fadeAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -85,7 +93,10 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
       relacionPorCampo[campo] = TextEditingController();
     }
     
-    if (widget.isEditing && widget.planeacionId != null) {
+    // ✅ NUEVO: Cargar datos del borrador si existe
+    if (widget.draftData != null && !isDraftLoaded) {
+      _loadDraftData();
+    } else if (widget.isEditing && widget.planeacionId != null) {
       _cargarDatosExistentes();
     }
   }
@@ -109,6 +120,128 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
       controller.dispose();
     }
     super.dispose();
+  }
+
+  // ✅ NUEVA FUNCIÓN: Cargar datos del borrador
+  void _loadDraftData() {
+    try {
+      print('📋 Cargando datos del borrador en Unidad...');
+      final data = widget.draftData!;
+      
+      setState(() {
+        // Cargar datos básicos
+        propositoController.text = data['proposito'] ?? '';
+        relevanciaController.text = data['relevancia_social'] ?? '';
+        ejeSeleccionado = data['eje_articulador'];
+        
+        // Cargar fechas si existen
+        if (data['fecha_inicio'] != null) {
+          if (data['fecha_inicio'] is String) {
+            fechaInicio = DateTime.tryParse(data['fecha_inicio']);
+          } else if (data['fecha_inicio'] is Timestamp) {
+            fechaInicio = (data['fecha_inicio'] as Timestamp).toDate();
+          }
+        }
+        if (data['fecha_fin'] != null) {
+          if (data['fecha_fin'] is String) {
+            fechaFin = DateTime.tryParse(data['fecha_fin']);
+          } else if (data['fecha_fin'] is Timestamp) {
+            fechaFin = (data['fecha_fin'] as Timestamp).toDate();
+          }
+        }
+        
+        // Cargar momentos específicos de Unidad Didáctica
+        if (data['momentos'] != null) {
+          final momentos = Map<String, dynamic>.from(data['momentos']);
+          lecturaRealidadController.text = momentos['lectura_realidad'] ?? '';
+          identificacionTramaController.text = momentos['identificacion_trama'] ?? '';
+          planificacionController.text = momentos['planificacion'] ?? '';
+          exploracionController.text = momentos['exploracion'] ?? '';
+          participacionController.text = momentos['participacion'] ?? '';
+          conclusionController.text = momentos['conclusion'] ?? '';
+          variantesController.text = momentos['posibles_variantes'] ?? '';
+        }
+        
+        // Cargar listas
+        if (data['materiales'] != null) {
+          materiales.clear();
+          materiales.addAll(List<String>.from(data['materiales']));
+        }
+        if (data['espacios'] != null) {
+          espacios.clear();
+          espacios.addAll(List<String>.from(data['espacios']));
+        }
+        if (data['produccion_sugerida'] != null) {
+          produccion.clear();
+          produccion.addAll(List<String>.from(data['produccion_sugerida']));
+        }
+        
+        // Cargar relación de contenidos
+        if (data['relacion_contenidos'] != null) {
+          final relaciones = Map<String, dynamic>.from(data['relacion_contenidos']);
+          relaciones.forEach((campo, texto) {
+            if (relacionPorCampo[campo] != null) {
+              relacionPorCampo[campo]!.text = texto ?? '';
+            }
+          });
+        }
+      });
+      
+      isDraftLoaded = true;
+      print('✅ Datos del borrador cargados en Unidad');
+      
+    } catch (e) {
+      print('❌ Error cargando datos del borrador en Unidad: $e');
+      isDraftLoaded = true;
+    }
+  }
+
+  // ✅ NUEVA FUNCIÓN: Guardar borrador
+  Future<void> _saveDraft() async {
+    final draftData = {
+      'titulo': widget.titulo,
+      'modalidad': 'Unidad Didáctica',
+      'campus': widget.campus,
+      'contenidos': widget.contenidos,
+      'seleccionGrados': widget.seleccionGrados,
+      // Campos específicos de Unidad Didáctica
+      'proposito': propositoController.text,
+      'relevancia_social': relevanciaController.text,
+      'eje_articulador': ejeSeleccionado,
+      'fecha_inicio': fechaInicio?.toIso8601String(),
+      'fecha_fin': fechaFin?.toIso8601String(),
+      'momentos': {
+        'lectura_realidad': lecturaRealidadController.text,
+        'identificacion_trama': identificacionTramaController.text,
+        'planificacion': planificacionController.text,
+        'exploracion': exploracionController.text,
+        'participacion': participacionController.text,
+        'conclusion': conclusionController.text,
+        'posibles_variantes': variantesController.text,
+      },
+      'materiales': materiales,
+      'espacios': espacios,
+      'produccion_sugerida': produccion,
+      'relacion_contenidos': {
+        for (final campo in widget.campus)
+          campo: relacionPorCampo[campo]?.text ?? ""
+      },
+    };
+
+    try {
+      final savedDraftId = await DraftService.saveDraft(
+        modalidad: 'Unidad Didáctica',
+        data: draftData,
+        draftId: currentDraftId,
+        tipoPagina: 'modalidad', // ✅ NUEVO: Especificar tipo de página
+      );
+      
+      if (savedDraftId != null && currentDraftId == null) {
+        currentDraftId = savedDraftId;
+      }
+    } catch (e) {
+      print('Error guardando borrador Unidad: $e');
+    }
   }
 
   Future<void> _cargarDatosExistentes() async {
@@ -248,6 +381,11 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
         ),
       );
     }
+
+    // ✅ NUEVO: Marcar borrador como completado
+    if (currentDraftId != null) {
+      await DraftService.markAsCompleted(currentDraftId!);
+    }
   }
 
   void _visualizarPDF() {
@@ -296,16 +434,15 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
     return Scaffold(
       body: Column(
         children: [
-          // ✅ HEADER CON DEGRADADO MORADO
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF4A148C), // Morado profundo
-                  Color(0xFF6A1B9A), // Morado medio
-                  Color(0xFF8E24AA), // Morado claro
+                  Color(0xFF4A148C),
+                  Color(0xFF6A1B9A),
+                  Color(0xFF8E24AA),
                 ],
               ),
             ),
@@ -318,23 +455,47 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            widget.isEditing 
-                                ? 'Editar Unidad' 
-                                : 'Unidad Didáctica',
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontFamily: 'ComicNeue',
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black26,
-                                  blurRadius: 10,
-                                  offset: Offset(2, 2),
+                          Row(
+                            children: [
+                              Text(
+                                widget.isEditing 
+                                    ? 'Editar Unidad' 
+                                    : 'Unidad Didáctica',
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'ComicNeue',
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black26,
+                                      blurRadius: 10,
+                                      offset: Offset(2, 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // ✅ NUEVO: Indicador de borrador
+                              if (widget.draftData != null) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'BORRADOR',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'ComicNeue',
+                                    ),
+                                  ),
                                 ),
                               ],
-                            ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -365,7 +526,6 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
             ),
           ),
 
-          // ✅ CONTENIDO PRINCIPAL CON ANIMACIÓN
           Expanded(
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -383,7 +543,10 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                               child: _fechaSelector(
                                 'Selecciona fecha de inicio',
                                 fechaInicio,
-                                (picked) => setState(() => fechaInicio = picked),
+                                (picked) {
+                                  setState(() => fechaInicio = picked);
+                                  _saveDraft(); // ✅ NUEVO: Auto-guardar
+                                },
                                 'Inicio',
                               ),
                             ),
@@ -392,7 +555,10 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                               child: _fechaSelector(
                                 'Selecciona fecha de cierre',
                                 fechaFin,
-                                (picked) => setState(() => fechaFin = picked),
+                                (picked) {
+                                  setState(() => fechaFin = picked);
+                                  _saveDraft(); // ✅ NUEVO: Auto-guardar
+                                },
                                 'Cierre',
                               ),
                             ),
@@ -458,6 +624,7 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                                 minLines: 1,
                                 maxLines: 4,
                                 style: const TextStyle(fontFamily: 'ComicNeue'),
+                                onChanged: (value) => _saveDraft(), // ✅ NUEVO: Auto-guardar
                                 decoration: InputDecoration(
                                   hintText: 'Describe la relación para $campo...',
                                   hintStyle: const TextStyle(fontFamily: 'ComicNeue'),
@@ -480,7 +647,6 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                         )),
                       ]),
                       
-                      // ✅ CORREGIDO - Dropdown del Eje articulador con tema morado
                       _seccionContenedor([
                         _titulo('Eje articulador'),
                         DropdownButtonFormField<String>(
@@ -500,29 +666,32 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                                   child: Text(
                                     e,
                                     overflow: TextOverflow.ellipsis,
-                                    maxLines: 2, // ✅ CAMBIADO - Permitir más líneas
+                                    maxLines: 2,
                                     style: const TextStyle(
                                       fontFamily: 'ComicNeue',
-                                      fontSize: 14, // ✅ AGREGADO - Tamaño específico
-                                      color: Colors.black87, // ✅ AGREGADO - Color específico
+                                      fontSize: 14,
+                                      color: Colors.black87,
                                     ),
                                   ),
                                 ),
                               )
                               .toList(),
-                          onChanged: (v) => setState(() => ejeSeleccionado = v),
+                          onChanged: (v) {
+                            setState(() => ejeSeleccionado = v);
+                            _saveDraft(); // ✅ NUEVO: Auto-guardar
+                          },
                           style: const TextStyle(
                             fontFamily: 'ComicNeue',
-                            color: Colors.black87, // ✅ AGREGADO - Color del texto seleccionado
+                            color: Colors.black87,
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Selecciona un eje articulador', // ✅ AGREGADO - Hint en decoration
+                            hintText: 'Selecciona un eje articulador',
                             hintStyle: const TextStyle(
                               fontFamily: 'ComicNeue',
                               color: Colors.grey,
                             ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16), // ✅ AGREGADO - Padding interno
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(color: const Color(0xFF4A148C).withOpacity(0.3)),
@@ -536,11 +705,11 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                               borderSide: const BorderSide(color: Color(0xFF4A148C), width: 2),
                             ),
                           ),
-                          dropdownColor: Colors.white, // ✅ AGREGADO - Color de fondo del dropdown
+                          dropdownColor: Colors.white,
                           icon: const Icon(
                             Icons.arrow_drop_down,
                             color: Color(0xFF4A148C),
-                          ), // ✅ AGREGADO - Icono personalizado con color morado
+                          ),
                         ),
                       ]),
                       
@@ -762,6 +931,7 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
           minLines: 1,
           maxLines: 4,
           style: const TextStyle(fontFamily: 'ComicNeue'),
+          onChanged: (value) => _saveDraft(), // ✅ NUEVO: Auto-guardar
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(fontFamily: 'ComicNeue'),
@@ -898,6 +1068,7 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                     ),
                     onPressed: () {
                       setState(() => lista.remove(e));
+                      _saveDraft(); // ✅ NUEVO: Auto-guardar
                     },
                   )
                 ],
@@ -931,6 +1102,7 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                       lista.add(v.trim());
                       controller.clear();
                     });
+                    _saveDraft(); // ✅ NUEVO: Auto-guardar
                   }
                 },
               ),
@@ -946,6 +1118,7 @@ class _DetallarUnidadPageState extends State<DetallarUnidadPage>
                     lista.add(controller.text.trim());
                     controller.clear();
                   });
+                  _saveDraft(); // ✅ NUEVO: Auto-guardar
                 }
               },
             )

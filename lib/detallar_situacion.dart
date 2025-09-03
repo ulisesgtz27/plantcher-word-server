@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/draft_service.dart';
 import 'pages/visualizar_pdf_page.dart';
 
-class DetallarRinconesPage extends StatefulWidget {
+class DetallarSituacionPage extends StatefulWidget {
   final String titulo;
   final List<String> campus;
   final List<Map<String, dynamic>> contenidos;
@@ -13,7 +13,7 @@ class DetallarRinconesPage extends StatefulWidget {
   final Map<String, dynamic>? draftData; // ✅ NUEVO PARÁMETRO
   final String? draftId; // ✅ NUEVO PARÁMETRO
 
-  const DetallarRinconesPage({
+  const DetallarSituacionPage({
     super.key,
     required this.titulo,
     required this.campus,
@@ -26,24 +26,16 @@ class DetallarRinconesPage extends StatefulWidget {
   });
 
   @override
-  State<DetallarRinconesPage> createState() => _DetallarRinconesPageState();
+  State<DetallarSituacionPage> createState() => _DetallarSituacionPageState();
 }
 
-class _DetallarRinconesPageState extends State<DetallarRinconesPage>
+class _DetallarSituacionPageState extends State<DetallarSituacionPage>
     with TickerProviderStateMixin {
   final TextEditingController propositoController = TextEditingController();
   final TextEditingController relevanciaController = TextEditingController();
-  final TextEditingController puntoPartidaController = TextEditingController();
-  final TextEditingController asambleaInicialController =
-      TextEditingController();
-  final TextEditingController exploracionRinconesController =
-      TextEditingController();
-  final TextEditingController exploracionDescubrimientoController =
-      TextEditingController();
-  final TextEditingController compartimosAprendidoController =
-      TextEditingController();
-  final TextEditingController evaluamosExperienciaController =
-      TextEditingController();
+  final TextEditingController inicioController = TextEditingController();
+  final TextEditingController desarrolloController = TextEditingController();
+  final TextEditingController cierreController = TextEditingController();
   final TextEditingController variantesController = TextEditingController();
 
   DateTime? fechaInicio;
@@ -56,19 +48,6 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
   final TextEditingController materialInput = TextEditingController();
   final TextEditingController espacioInput = TextEditingController();
   final TextEditingController produccionInput = TextEditingController();
-
-  String? ejeSeleccionado;
-  final List<String> ejes = [
-    "Inclusión",
-    "Pensamiento crítico",
-    "Interculturalidad crítica",
-    "Igualdad de género",
-    "Vida saludable",
-    "Apropiación de las culturas a través de la lectura y la escritura",
-    "Artes y experiencias estéticas"
-  ];
-
-  final Map<String, TextEditingController> relacionPorCampo = {};
 
   // ✅ NUEVO: Variables para el sistema de borradores
   String? currentDraftId;
@@ -95,10 +74,6 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
 
     _fadeAnimationController.forward();
 
-    for (final campo in widget.campus) {
-      relacionPorCampo[campo] = TextEditingController();
-    }
-
     // ✅ NUEVO: Cargar datos del borrador si existe
     if (widget.draftData != null && !isDraftLoaded) {
       _loadDraftData();
@@ -112,33 +87,26 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
     _fadeAnimationController.dispose();
     propositoController.dispose();
     relevanciaController.dispose();
-    puntoPartidaController.dispose();
-    asambleaInicialController.dispose();
-    exploracionRinconesController.dispose();
-    exploracionDescubrimientoController.dispose();
-    compartimosAprendidoController.dispose();
-    evaluamosExperienciaController.dispose();
+    inicioController.dispose();
+    desarrolloController.dispose();
+    cierreController.dispose();
     variantesController.dispose();
     materialInput.dispose();
     espacioInput.dispose();
     produccionInput.dispose();
-    for (final controller in relacionPorCampo.values) {
-      controller.dispose();
-    }
     super.dispose();
   }
 
   // ✅ NUEVA FUNCIÓN: Cargar datos del borrador
   void _loadDraftData() {
     try {
-      print('📋 Cargando datos del borrador en Rincones...');
+      print('📋 Cargando datos del borrador en Situación Didáctica...');
       final data = widget.draftData!;
 
       setState(() {
         // Cargar datos básicos
         propositoController.text = data['proposito'] ?? '';
         relevanciaController.text = data['relevancia_social'] ?? '';
-        ejeSeleccionado = data['eje_articulador'];
 
         // Cargar fechas si existen
         if (data['fecha_inicio'] != null) {
@@ -156,19 +124,12 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
           }
         }
 
-        // Cargar momentos específicos de Rincones
+        // Cargar momentos específicos de Situación Didáctica
         if (data['momentos'] != null) {
           final momentos = Map<String, dynamic>.from(data['momentos']);
-          puntoPartidaController.text = momentos['punto_partida'] ?? '';
-          asambleaInicialController.text = momentos['asamblea_inicial'] ?? '';
-          exploracionRinconesController.text =
-              momentos['exploracion_rincones'] ?? '';
-          exploracionDescubrimientoController.text =
-              momentos['exploracion_descubrimiento'] ?? '';
-          compartimosAprendidoController.text =
-              momentos['compartimos_aprendido'] ?? '';
-          evaluamosExperienciaController.text =
-              momentos['evaluamos_experiencia'] ?? '';
+          inicioController.text = momentos['inicio'] ?? '';
+          desarrolloController.text = momentos['desarrollo'] ?? '';
+          cierreController.text = momentos['cierre'] ?? '';
           variantesController.text = momentos['posibles_variantes'] ?? '';
         }
 
@@ -185,23 +146,12 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
           produccion.clear();
           produccion.addAll(List<String>.from(data['produccion_sugerida']));
         }
-
-        // Cargar relación de contenidos
-        if (data['relacion_contenidos'] != null) {
-          final relaciones =
-              Map<String, dynamic>.from(data['relacion_contenidos']);
-          relaciones.forEach((campo, texto) {
-            if (relacionPorCampo[campo] != null) {
-              relacionPorCampo[campo]!.text = texto ?? '';
-            }
-          });
-        }
       });
 
       isDraftLoaded = true;
-      print('✅ Datos del borrador cargados en Rincones');
+      print('✅ Datos del borrador cargados en Situación Didáctica');
     } catch (e) {
-      print('❌ Error cargando datos del borrador en Rincones: $e');
+      print('❌ Error cargando datos del borrador en Situación Didáctica: $e');
       isDraftLoaded = true;
     }
   }
@@ -210,37 +160,29 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
   Future<void> _saveDraft() async {
     final draftData = {
       'titulo': widget.titulo,
-      'modalidad': 'Rincones de Aprendizaje',
+      'modalidad': 'Situación Didáctica',
       'campus': widget.campus,
       'contenidos': widget.contenidos,
       'seleccionGrados': widget.seleccionGrados,
-      // Campos específicos de Rincones
+      // Campos específicos de Situación Didáctica
       'proposito': propositoController.text,
       'relevancia_social': relevanciaController.text,
-      'eje_articulador': ejeSeleccionado,
       'fecha_inicio': fechaInicio?.toIso8601String(),
       'fecha_fin': fechaFin?.toIso8601String(),
       'momentos': {
-        'punto_partida': puntoPartidaController.text,
-        'asamblea_inicial': asambleaInicialController.text,
-        'exploracion_rincones': exploracionRinconesController.text,
-        'exploracion_descubrimiento': exploracionDescubrimientoController.text,
-        'compartimos_aprendido': compartimosAprendidoController.text,
-        'evaluamos_experiencia': evaluamosExperienciaController.text,
+        'inicio': inicioController.text,
+        'desarrollo': desarrolloController.text,
+        'cierre': cierreController.text,
         'posibles_variantes': variantesController.text,
       },
       'materiales': materiales,
       'espacios': espacios,
       'produccion_sugerida': produccion,
-      'relacion_contenidos': {
-        for (final campo in widget.campus)
-          campo: relacionPorCampo[campo]?.text ?? ""
-      },
     };
 
     try {
       final savedDraftId = await DraftService.saveDraft(
-        modalidad: 'Rincones de Aprendizaje',
+        modalidad: 'Situación Didáctica',
         data: draftData,
         draftId: currentDraftId,
         tipoPagina: 'modalidad', // ✅ NUEVO: Especificar tipo de página
@@ -250,14 +192,14 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
         currentDraftId = savedDraftId;
       }
     } catch (e) {
-      print('Error guardando borrador Rincones: $e');
+      print('Error guardando borrador Situación Didáctica: $e');
     }
   }
 
   Future<void> _cargarDatosExistentes() async {
     try {
       DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('detalles_rincones')
+          .collection('detalles_situacion')
           .doc(widget.planeacionId)
           .get();
 
@@ -267,20 +209,12 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
         setState(() {
           propositoController.text = data['proposito'] ?? '';
           relevanciaController.text = data['relevancia_social'] ?? '';
-          ejeSeleccionado = data['eje_articulador'];
 
           if (data['momentos'] != null) {
             final momentos = data['momentos'] as Map<String, dynamic>;
-            puntoPartidaController.text = momentos['punto_partida'] ?? '';
-            asambleaInicialController.text = momentos['asamblea_inicial'] ?? '';
-            exploracionRinconesController.text =
-                momentos['exploracion_rincones'] ?? '';
-            exploracionDescubrimientoController.text =
-                momentos['exploracion_descubrimiento'] ?? '';
-            compartimosAprendidoController.text =
-                momentos['compartimos_aprendido'] ?? '';
-            evaluamosExperienciaController.text =
-                momentos['evaluamos_experiencia'] ?? '';
+            inicioController.text = momentos['inicio'] ?? '';
+            desarrolloController.text = momentos['desarrollo'] ?? '';
+            cierreController.text = momentos['cierre'] ?? '';
             variantesController.text = momentos['posibles_variantes'] ?? '';
           }
 
@@ -295,16 +229,6 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
           if (data['produccion_sugerida'] != null) {
             produccion.clear();
             produccion.addAll(List<String>.from(data['produccion_sugerida']));
-          }
-
-          if (data['relacion_contenidos'] != null) {
-            final relaciones =
-                data['relacion_contenidos'] as Map<String, dynamic>;
-            relaciones.forEach((campo, texto) {
-              if (relacionPorCampo[campo] != null) {
-                relacionPorCampo[campo]!.text = texto ?? '';
-              }
-            });
           }
         });
       }
@@ -343,7 +267,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
     return '${format(fechaInicio!)} - ${format(fechaFin!)}';
   }
 
-  Future<void> guardarDetalleRincones() async {
+  Future<void> guardarDetalleSituacion() async {
     final Map<String, dynamic> data = {
       "titulo": widget.titulo,
       "campos_formativos": widget.campus,
@@ -351,19 +275,11 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
       "procesos_desarrollo": widget.seleccionGrados,
       "proposito": propositoController.text,
       "relevancia_social": relevanciaController.text,
-      "relacion_contenidos": {
-        for (final campo in widget.campus)
-          campo: relacionPorCampo[campo]?.text ?? ""
-      },
-      "eje_articulador": ejeSeleccionado,
       "periodo_aplicacion": periodoAplicacionTexto,
       "momentos": {
-        "punto_partida": puntoPartidaController.text,
-        "asamblea_inicial": asambleaInicialController.text,
-        "exploracion_rincones": exploracionRinconesController.text,
-        "exploracion_descubrimiento": exploracionDescubrimientoController.text,
-        "compartimos_aprendido": compartimosAprendidoController.text,
-        "evaluamos_experiencia": evaluamosExperienciaController.text,
+        "inicio": inicioController.text,
+        "desarrollo": desarrolloController.text,
+        "cierre": cierreController.text,
         "posibles_variantes": variantesController.text,
       },
       "materiales": materiales,
@@ -374,7 +290,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
 
     if (widget.isEditing && widget.planeacionId != null) {
       await FirebaseFirestore.instance
-          .collection('detalles_rincones')
+          .collection('detalles_situacion')
           .doc(widget.planeacionId)
           .update(data);
 
@@ -392,7 +308,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
       );
     } else {
       await FirebaseFirestore.instance
-          .collection('detalles_rincones')
+          .collection('detalles_situacion')
           .add(data);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -417,26 +333,18 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
 
   void _visualizarPDF() {
     final momentos = {
-      'punto_partida': puntoPartidaController.text,
-      'asamblea_inicial': asambleaInicialController.text,
-      'exploracion_rincones': exploracionRinconesController.text,
-      'exploracion_descubrimiento': exploracionDescubrimientoController.text,
-      'compartimos_aprendido': compartimosAprendidoController.text,
-      'evaluamos_experiencia': evaluamosExperienciaController.text,
-    };
-
-    final Map<String, String> relacionContenidos = {
-      for (final campo in widget.campus)
-        campo: relacionPorCampo[campo]?.text ?? ""
+      'inicio': inicioController.text,
+      'desarrollo': desarrolloController.text,
+      'cierre': cierreController.text,
     };
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => VisualizarPDFPage(
-          modalidad: 'Rincones de Aprendizaje',
-          pdfFileName: 'planeacion_rincones.pdf',
-          wordFileName: 'planeacion_rincones.docx',
+          modalidad: 'Situación Didáctica',
+          pdfFileName: 'planeacion_situacion.pdf',
+          wordFileName: 'planeacion_situacion.docx',
           titulo: widget.titulo,
           periodoAplicacion: periodoAplicacionTexto,
           proposito: propositoController.text,
@@ -445,8 +353,8 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
           camposFormativos: widget.campus,
           contenidos: _getContenidos(),
           procesosDesarrollo: widget.seleccionGrados,
-          relacionContenidos: relacionContenidos,
-          ejeArticulador: ejeSeleccionado ?? '',
+          relacionContenidos: {}, // Sin relación de contenidos
+          ejeArticulador: '', // Sin eje articulador
           momentos: momentos,
           posiblesVariantes: variantesController.text,
           materiales: materiales,
@@ -467,9 +375,9 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFFAD1457),
-                  Color(0xFFC2185B),
-                  Color(0xFFE91E63),
+                  Color(0xFF4CAF50),
+                  Color(0xFF66BB6A),
+                  Color(0xFF81C784),
                 ],
               ),
             ),
@@ -487,8 +395,8 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                             children: [
                               Text(
                                 widget.isEditing
-                                    ? 'Editar Rincones'
-                                    : 'Rincones Apren',
+                                    ? 'Editar Situación'
+                                    : 'Situación Didáctica',
                                 style: const TextStyle(
                                   fontSize: 26,
                                   fontWeight: FontWeight.bold,
@@ -600,7 +508,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: Color(0xFFAD1457),
+                                color: Color(0xFF4CAF50),
                               ),
                             ),
                           ),
@@ -627,149 +535,16 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                         _procesosDesarrollo(),
                       ]),
                       _seccionContenedor([
-                        _titulo('Relación entre los contenidos curriculares'),
-                        ...widget.campus.map((campo) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    campo,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFAD1457),
-                                      fontFamily: 'ComicNeue',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: relacionPorCampo[campo],
-                                    minLines: 1,
-                                    maxLines: 4,
-                                    style: const TextStyle(
-                                        fontFamily: 'ComicNeue'),
-                                    onChanged: (value) =>
-                                        _saveDraft(), // ✅ NUEVO: Auto-guardar
-                                    decoration: InputDecoration(
-                                      hintText:
-                                          'Describe la relación para $campo...',
-                                      hintStyle: const TextStyle(
-                                          fontFamily: 'ComicNeue'),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                            color: const Color(0xFFAD1457)
-                                                .withOpacity(0.3)),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                            color: const Color(0xFFAD1457)
-                                                .withOpacity(0.3)),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: const BorderSide(
-                                            color: Color(0xFFAD1457), width: 2),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )),
-                      ]),
-                      _seccionContenedor([
-                        _titulo('Eje articulador'),
-                        DropdownButtonFormField<String>(
-                          value: ejeSeleccionado,
-                          hint: const Text(
-                            'Selecciona un eje articulador',
-                            style: TextStyle(
-                              fontFamily: 'ComicNeue',
-                              color: Colors.grey,
-                            ),
-                          ),
-                          isExpanded: true,
-                          items: ejes
-                              .map(
-                                (e) => DropdownMenuItem(
-                                  value: e,
-                                  child: Text(
-                                    e,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 2,
-                                    style: const TextStyle(
-                                      fontFamily: 'ComicNeue',
-                                      fontSize: 14,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) {
-                            setState(() => ejeSeleccionado = v);
-                            _saveDraft(); // ✅ NUEVO: Auto-guardar
-                          },
-                          style: const TextStyle(
-                            fontFamily: 'ComicNeue',
-                            color: Colors.black87,
-                            fontSize: 14,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'Selecciona un eje articulador',
-                            hintStyle: const TextStyle(
-                              fontFamily: 'ComicNeue',
-                              color: Colors.grey,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 16),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                  color:
-                                      const Color(0xFFAD1457).withOpacity(0.3)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                  color:
-                                      const Color(0xFFAD1457).withOpacity(0.3)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                  color: Color(0xFFAD1457), width: 2),
-                            ),
-                          ),
-                          dropdownColor: Colors.white,
-                          icon: const Icon(
-                            Icons.arrow_drop_down,
-                            color: Color(0xFFAD1457),
-                          ),
-                        ),
-                      ]),
-                      _seccionContenedor([
                         _titulo('Momentos'),
-                        _subtitulo('1. Punto de partida (Saberes previos)'),
-                        _input(puntoPartidaController,
-                            'Describe el punto de partida...'),
-                        _subtitulo('2. Asamblea inicial y planeación'),
-                        _input(asambleaInicialController,
-                            'Describe la asamblea inicial y planeación...'),
-                        _subtitulo('3. Exploración de los rincones'),
-                        _input(exploracionRinconesController,
-                            'Describe la exploración de los rincones...'),
-                        _subtitulo('4. Exploración y descubrimiento'),
-                        _input(exploracionDescubrimientoController,
-                            'Describe la exploración y descubrimiento...'),
-                        _subtitulo('5. Compartimos lo aprendido'),
-                        _input(compartimosAprendidoController,
-                            'Describe cómo comparten lo aprendido...'),
-                        _subtitulo(
-                            '6. Evaluamos la experiencia (Reflexión sobre el aprendizaje)'),
-                        _input(evaluamosExperienciaController,
-                            'Describe la evaluación/reflexión...'),
+                        _subtitulo('1. Inicio'),
+                        _input(inicioController,
+                            'Describe el momento de inicio...'),
+                        _subtitulo('2. Desarrollo'),
+                        _input(desarrolloController,
+                            'Describe el desarrollo de la situación...'),
+                        _subtitulo('3. Cierre'),
+                        _input(cierreController,
+                            'Describe el cierre de la situación...'),
                         _subtitulo('Posibles variantes'),
                         _input(variantesController,
                             'Describe posibles variantes...'),
@@ -805,7 +580,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                                       : '¿Deseas guardar la planeación?',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFFAD1457),
+                                    color: Color(0xFF4CAF50),
                                     fontFamily: 'ComicNeue',
                                   ),
                                 ),
@@ -823,7 +598,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                                     child: const Text(
                                       'No',
                                       style: TextStyle(
-                                        color: Color(0xFFAD1457),
+                                        color: Color(0xFF4CAF50),
                                         fontFamily: 'ComicNeue',
                                       ),
                                     ),
@@ -832,7 +607,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                                     onPressed: () =>
                                         Navigator.of(context).pop(true),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFAD1457),
+                                      backgroundColor: const Color(0xFF4CAF50),
                                       foregroundColor: Colors.white,
                                       textStyle: const TextStyle(
                                           fontFamily: 'ComicNeue'),
@@ -846,12 +621,12 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                               ),
                             );
                             if (result == true) {
-                              await guardarDetalleRincones();
+                              await guardarDetalleSituacion();
                               _visualizarPDF();
                             }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFAD1457),
+                            backgroundColor: const Color(0xFF4CAF50),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 32, vertical: 16),
@@ -895,7 +670,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
           ),
         ],
         border: Border.all(
-          color: const Color(0xFFAD1457).withOpacity(0.2),
+          color: const Color(0xFF4CAF50).withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -923,7 +698,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFAD1457).withOpacity(0.3)),
+          border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.3)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -965,7 +740,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
-            color: Color(0xFFAD1457),
+            color: Color(0xFF4CAF50),
             fontFamily: 'ComicNeue',
           ),
         ),
@@ -997,16 +772,16 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  BorderSide(color: const Color(0xFFAD1457).withOpacity(0.3)),
+                  BorderSide(color: const Color(0xFF4CAF50).withOpacity(0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  BorderSide(color: const Color(0xFFAD1457).withOpacity(0.3)),
+                  BorderSide(color: const Color(0xFF4CAF50).withOpacity(0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFAD1457), width: 2),
+              borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 2),
             ),
           ),
         ),
@@ -1026,7 +801,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                           '• ',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Color(0xFFAD1457),
+                            color: Color(0xFF4CAF50),
                             fontFamily: 'ComicNeue',
                           ),
                         ),
@@ -1055,7 +830,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
           campoNombre,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFFAD1457),
+            color: Color(0xFF4CAF50),
             fontFamily: 'ComicNeue',
           ),
         ),
@@ -1114,7 +889,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                     '• ',
                     style: TextStyle(
                       fontSize: 18,
-                      color: Color(0xFFAD1457),
+                      color: Color(0xFF4CAF50),
                       fontFamily: 'ComicNeue',
                     ),
                   ),
@@ -1150,17 +925,17 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                        color: const Color(0xFFAD1457).withOpacity(0.3)),
+                        color: const Color(0xFF4CAF50).withOpacity(0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                        color: const Color(0xFFAD1457).withOpacity(0.3)),
+                        color: const Color(0xFF4CAF50).withOpacity(0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        const BorderSide(color: Color(0xFFAD1457), width: 2),
+                        const BorderSide(color: Color(0xFF4CAF50), width: 2),
                   ),
                 ),
                 onSubmitted: (v) {
@@ -1177,7 +952,7 @@ class _DetallarRinconesPageState extends State<DetallarRinconesPage>
             IconButton(
               icon: const Icon(
                 Icons.add_circle,
-                color: Color(0xFFAD1457),
+                color: Color(0xFF4CAF50),
               ),
               onPressed: () {
                 if (controller.text.trim().isNotEmpty) {

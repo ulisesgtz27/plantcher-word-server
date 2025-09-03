@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'services/draft_service.dart';
 import 'opciones_page.dart';
 import 'detallar_abj_page.dart';
 import 'detallar_centros_page.dart';
@@ -19,9 +20,9 @@ class PlaneacionesListPage extends StatefulWidget {
 class _PlaneacionesListPageState extends State<PlaneacionesListPage> 
     with TickerProviderStateMixin {
   late AnimationController _animationController;
-  late AnimationController _buttonAnimationController; // ✅ AGREGADO - Para animación del botón
+  late AnimationController _buttonAnimationController;
   late Animation<double> _fadeAnimation;
-  late Animation<double> _buttonScaleAnimation; // ✅ AGREGADO
+  late Animation<double> _buttonScaleAnimation;
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
   @override
@@ -32,7 +33,6 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
       vsync: this,
     );
     
-    // ✅ AGREGADO - Controlador para animación del botón
     _buttonAnimationController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
@@ -42,52 +42,381 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     
-    // ✅ AGREGADO - Animación de escala para el botón
     _buttonScaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
       CurvedAnimation(parent: _buttonAnimationController, curve: Curves.easeInOut),
     );
     
     _animationController.forward();
     
-    // Debug: Verificar datos del usuario
+    // Verificar borradores al cargar la página
     if (currentUser != null) {
-      _debugUserPlaneaciones();
+      _checkForDraftsImproved();
     }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
-    _buttonAnimationController.dispose(); // ✅ AGREGADO
+    _buttonAnimationController.dispose();
     super.dispose();
   }
 
-  // Método de debug para verificar las planeaciones del usuario
-  Future<void> _debugUserPlaneaciones() async {
+  // ✅ FUNCIÓN MEJORADA: Verificar borradores con logs detallados
+  Future<void> _checkForDraftsImproved() async {
+    print('🔍 Iniciando verificación de borradores...');
+    
     try {
-      print('=== DEBUG PLANEACIONES ===');
-      print('Usuario actual: ${currentUser?.uid}');
+      // Esperar un poco para que la UI se cargue completamente
+      await Future.delayed(const Duration(milliseconds: 1000));
       
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('planeaciones')
-          .where('userId', isEqualTo: currentUser!.uid)
-          .get();
+      print('📋 Buscando borradores en Firestore...');
+      final draft = await DraftService.getLatestDraft();
       
-      print('Planeaciones encontradas: ${snapshot.docs.length}');
-      
-      for (var doc in snapshot.docs) {
-        print('Documento ID: ${doc.id}');
-        print('Datos: ${doc.data()}');
+      if (draft != null) {
+        print('✅ Borrador encontrado: $draft');
+        
+        if (mounted) {
+          print('📱 Widget está montado, mostrando diálogo...');
+          _showDraftDialog(draft);
+        } else {
+          print('❌ Widget no está montado');
+        }
+      } else {
+        print('❌ No se encontraron borradores');
       }
-      
-      print('=== FIN DEBUG ===');
     } catch (e) {
-      print('Error en debug: $e');
+      print('❌ Error verificando borradores: $e');
+      print('Stack trace: ${StackTrace.current}');
     }
   }
 
+  // ✅ FUNCIÓN MEJORADA: Mostrar diálogo con más logs
+  void _showDraftDialog(Map<String, dynamic> draft) {
+    print('🎯 Intentando mostrar diálogo de borrador...');
+    
+    final modalidad = draft['modalidad'] as String;
+    final data = draft['data'] as Map<String, dynamic>;
+    final draftId = draft['id'] as String;
+    
+    print('📝 Datos del borrador:');
+    print('   - Modalidad: $modalidad');
+    print('   - ID: $draftId');
+    print('   - Título: ${data['titulo']}');
+    
+    // ✅ AGREGADO: Verificar si ya hay un diálogo abierto
+    if (ModalRoute.of(context)?.isCurrent != true) {
+      print('❌ Ya hay un diálogo o ruta abierta');
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        print('🎨 Construyendo diálogo...');
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.drafts,
+                  color: Colors.orange,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Borrador Encontrado',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                    fontFamily: 'ComicNeue',
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '¿Quieres continuar con la planeación que estabas haciendo?',
+                style: TextStyle(
+                  fontFamily: 'ComicNeue',
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Modalidad: $modalidad',
+                      style: const TextStyle(
+                        fontFamily: 'ComicNeue',
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    if (data['titulo'] != null && data['titulo'].toString().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Título: ${data['titulo']}',
+                        style: const TextStyle(fontFamily: 'ComicNeue'),
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'Progreso: ${_calculateProgress(data)}% completado',
+                      style: TextStyle(
+                        fontFamily: 'ComicNeue',
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                print('🗑️ Usuario eligió eliminar borrador');
+                try {
+                  await DraftService.deleteDraft(draftId);
+                  print('✅ Borrador eliminado exitosamente');
+                } catch (e) {
+                  print('❌ Error eliminando borrador: $e');
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'No, empezar nuevo',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontFamily: 'ComicNeue',
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                print('✅ Usuario eligió continuar con borrador');
+                Navigator.of(context).pop();
+                _navigateToDraft(modalidad, data, draftId);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                textStyle: const TextStyle(fontFamily: 'ComicNeue'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('Sí, continuar'),
+            ),
+          ],
+        );
+      },
+    ).then((value) {
+      print('📱 Diálogo cerrado');
+    }).catchError((error) {
+      print('❌ Error mostrando diálogo: $error');
+    });
+  }
+
+  // ✅ FUNCIÓN MEJORADA: Navegar al borrador con logs
+  void _navigateToDraft(String modalidad, Map<String, dynamic> data, String draftId) {
+    print('🚀 Navegando a borrador...');
+    print('   - Paso actual: ${data['paso']}');
+    
+    // Determinar si es opciones_page o detallar
+    if (data['paso'] != null && data['paso'] != 'detallar') {
+      print('📝 Navegando a OpcionesPage');
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => OpcionesPage(
+            draftData: data,
+            draftId: draftId,
+          ),
+        ),
+      );
+    } else {
+      print('🎯 Navegando a página de detallar');
+      _navigateToDetailPage(modalidad, data, draftId);
+    }
+  }
+
+  // ✅ FUNCIÓN MEJORADA: Navegar a página de detallar con logs
+  void _navigateToDetailPage(String modalidad, Map<String, dynamic> data, String draftId) {
+    print('🎯 Determinando página de detallar para modalidad: $modalidad');
+    
+    final titulo = data['titulo']?.toString() ?? '';
+    final campus = data['campus'] != null ? List<String>.from(data['campus']) : <String>[];
+    final contenidos = data['contenidos'] != null ? List<Map<String, dynamic>>.from(data['contenidos']) : <Map<String, dynamic>>[];
+    final seleccionGrados = data['seleccionGrados'] != null ? List<Map<String, dynamic>>.from(data['seleccionGrados']) : <Map<String, dynamic>>[];
+    
+    print('📊 Datos extraídos:');
+    print('   - Título: $titulo');
+    print('   - Campus: ${campus.length} elementos');
+    print('   - Contenidos: ${contenidos.length} elementos');
+    print('   - Grados: ${seleccionGrados.length} elementos');
+    
+    switch (modalidad.toLowerCase()) {
+      case 'aprendizaje basado en el juego':
+      case 'abj':
+        print('🎮 Navegando a DetallarABJPage');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DetallarABJPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              draftData: data,
+              draftId: draftId,
+            ),
+          ),
+        );
+        break;
+      
+      case 'centros de interés':
+        print('🏛️ Navegando a DetallarCentrosInteresPage');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DetallarCentrosInteresPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              draftData: data,
+              draftId: draftId,
+            ),
+          ),
+        );
+        break;
+      
+      case 'taller crítico':
+        print('🔧 Navegando a DetallarTallerPage');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DetallarTallerPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              draftData: data,
+              draftId: draftId,
+            ),
+          ),
+        );
+        break;
+      
+      case 'proyecto':
+        print('📚 Navegando a DetallarProyectoPage');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DetallarProyectoPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              draftData: data,
+              draftId: draftId,
+            ),
+          ),
+        );
+        break;
+      
+      case 'unidad didáctica':
+        print('📖 Navegando a DetallarUnidadPage');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DetallarUnidadPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              draftData: data,
+              draftId: draftId,
+            ),
+          ),
+        );
+        break;
+      
+      case 'rincones de aprendizaje':
+        print('🏠 Navegando a DetallarRinconesPage');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DetallarRinconesPage(
+              titulo: titulo,
+              campus: campus,
+              contenidos: contenidos,
+              seleccionGrados: seleccionGrados,
+              draftData: data,
+              draftId: draftId,
+            ),
+          ),
+        );
+        break;
+      
+      default:
+        print('❌ Modalidad no reconocida: $modalidad');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Modalidad no reconocida para continuar borrador: $modalidad',
+              style: const TextStyle(fontFamily: 'ComicNeue'),
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+    }
+  }
+
+  // ✅ FUNCIÓN MEJORADA: Calcular progreso con más campos
+  int _calculateProgress(Map<String, dynamic> data) {
+    int completedFields = 0;
+    int totalFields = 12; // Aumentamos los campos totales
+    
+    if (data['titulo']?.toString().isNotEmpty == true) completedFields++;
+    if (data['modalidad']?.toString().isNotEmpty == true) completedFields++;
+    if (data['campus']?.isNotEmpty == true) completedFields++;
+    if (data['contenidos']?.isNotEmpty == true) completedFields++;
+    if (data['seleccionGrados']?.isNotEmpty == true) completedFields++;
+    if (data['proposito']?.toString().isNotEmpty == true) completedFields++;
+    if (data['relevancia_social']?.toString().isNotEmpty == true) completedFields++;
+    if (data['eje_articulador']?.toString().isNotEmpty == true) completedFields++;
+    if (data['fecha_inicio'] != null) completedFields++;
+    if (data['fecha_fin'] != null) completedFields++;
+    if (data['materiales']?.isNotEmpty == true) completedFields++;
+    if (data['espacios']?.isNotEmpty == true) completedFields++;
+    
+    final progress = ((completedFields / totalFields) * 100).round();
+    print('📊 Progreso calculado: $completedFields/$totalFields = $progress%');
+    return progress;
+  }
+
   Future<void> _eliminarPlaneacion(String planeacionId, String titulo) async {
-    // Mostrar diálogo de confirmación
     bool confirmar = await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -172,14 +501,12 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
   }
 
   void _editarPlaneacion(Map<String, dynamic> planeacionData, String planeacionId) {
-    // Extraer datos de la planeación
     final String titulo = planeacionData['titulo'] ?? '';
     final String modalidad = planeacionData['modalidad'] ?? '';
     final List<String> campus = List<String>.from(planeacionData['campus'] ?? []);
     final List<Map<String, dynamic>> contenidos = List<Map<String, dynamic>>.from(planeacionData['contenidos'] ?? []);
     final List<Map<String, dynamic>> seleccionGrados = List<Map<String, dynamic>>.from(planeacionData['seleccionGrados'] ?? []);
 
-    // Navegar a la pantalla correspondiente según la modalidad
     switch (modalidad) {
       case "Aprendizaje basado en el juego":
         Navigator.push(
@@ -294,7 +621,6 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
     }
   }
 
-  // ✅ MODIFICADO - Función con animación al presionar
   void _crearNuevaPlaneacion() async {
     // Animación al presionar
     await _buttonAnimationController.forward();
@@ -323,9 +649,9 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF6A4C93), // Morado profundo
-                  Color(0xFF9C89B8), // Morado medio
-                  Color(0xFFB8A9C9), // Morado claro
+                  Color(0xFF6A4C93),
+                  Color(0xFF9C89B8),
+                  Color(0xFFB8A9C9),
                 ],
               ),
             ),
@@ -369,6 +695,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
                               ),
                             ],
                           ),
+                          // ✅ LIMPIADO: Solo botón de cerrar sesión
                           IconButton(
                             onPressed: _cerrarSesion,
                             icon: const Icon(
@@ -404,7 +731,6 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
                           children: [
                             const SizedBox(height: 20),
                             
-                            // Título de la sección
                             const Text(
                               'Tus Planeaciones Educativas',
                               style: TextStyle(
@@ -643,7 +969,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
             ),
           ),
           
-          // ✅ NUEVO - Botón flotante fijo con tooltip
+          // Botón flotante fijo con tooltip
           Positioned(
             bottom: 20,
             right: 20,
