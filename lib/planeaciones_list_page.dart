@@ -535,8 +535,10 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
     }
   }
 
-  void _editarPlaneacion(
-      Map<String, dynamic> planeacionData, String planeacionId) {
+  // REEMPLAZAR LA FUNCIÓN COMPLETA _editarPlaneacion:
+
+  Future<void> _editarPlaneacion(
+      Map<String, dynamic> planeacionData, String planeacionId) async {
     final String titulo = planeacionData['titulo'] ?? '';
     final String modalidad = planeacionData['modalidad'] ?? '';
     final List<String> campus =
@@ -547,6 +549,67 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
         List<Map<String, dynamic>>.from(
             planeacionData['seleccionGrados'] ?? []);
 
+    // ✅ CARGAR DATOS EXISTENTES DE LA COLECCIÓN DE DETALLES
+    Map<String, dynamic>? existingData;
+    try {
+      DocumentSnapshot? detalleDoc;
+      
+      switch (modalidad) {
+        case "Aprendizaje basado en el juego":
+          detalleDoc = await FirebaseFirestore.instance
+              .collection('detalles_abj')
+              .doc(planeacionId)
+              .get();
+          break;
+        case "Centros de interés":
+          detalleDoc = await FirebaseFirestore.instance
+              .collection('detalles_centros')
+              .doc(planeacionId)
+              .get();
+          break;
+        case "Taller crítico":
+          detalleDoc = await FirebaseFirestore.instance
+              .collection('detalles_taller')
+              .doc(planeacionId)
+              .get();
+          break;
+        case "Proyecto":
+          detalleDoc = await FirebaseFirestore.instance
+              .collection('detalles_proyecto')
+              .doc(planeacionId)
+              .get();
+          break;
+        case "Unidad didáctica":
+          detalleDoc = await FirebaseFirestore.instance
+              .collection('detalles_unidad')
+              .doc(planeacionId)
+              .get();
+          break;
+        case "Rincones de aprendizaje":
+          detalleDoc = await FirebaseFirestore.instance
+              .collection('detalles_rincones')
+              .doc(planeacionId)
+              .get();
+          break;
+        case "Situacion Didactica":
+          detalleDoc = await FirebaseFirestore.instance
+              .collection('detalles_situacion')
+              .doc(planeacionId)
+              .get();
+          break;
+      }
+
+      if (detalleDoc != null && detalleDoc.exists) {
+        existingData = detalleDoc.data() as Map<String, dynamic>;
+        print('✅ Datos existentes cargados: ${existingData.keys}');
+      } else {
+        print('❌ No se encontraron datos existentes para $modalidad');
+      }
+    } catch (e) {
+      print('❌ Error cargando datos existentes: $e');
+    }
+
+    // ✅ NAVEGAR CON DATOS EXISTENTES
     switch (modalidad) {
       case "Aprendizaje basado en el juego":
         Navigator.push(
@@ -559,6 +622,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
               seleccionGrados: seleccionGrados,
               isEditing: true,
               planeacionId: planeacionId,
+              existingData: existingData, // ✅ PASAR DATOS EXISTENTES
             ),
           ),
         );
@@ -575,6 +639,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
               seleccionGrados: seleccionGrados,
               isEditing: true,
               planeacionId: planeacionId,
+              existingData: existingData, // ✅ PASAR DATOS EXISTENTES
             ),
           ),
         );
@@ -591,6 +656,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
               seleccionGrados: seleccionGrados,
               isEditing: true,
               planeacionId: planeacionId,
+              existingData: existingData, // ✅ PASAR DATOS EXISTENTES
             ),
           ),
         );
@@ -607,6 +673,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
               seleccionGrados: seleccionGrados,
               isEditing: true,
               planeacionId: planeacionId,
+              existingData: existingData, // ✅ PASAR DATOS EXISTENTES
             ),
           ),
         );
@@ -623,6 +690,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
               seleccionGrados: seleccionGrados,
               isEditing: true,
               planeacionId: planeacionId,
+              existingData: existingData, // ✅ PASAR DATOS EXISTENTES
             ),
           ),
         );
@@ -639,12 +707,12 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
               seleccionGrados: seleccionGrados,
               isEditing: true,
               planeacionId: planeacionId,
+              existingData: existingData, // ✅ PASAR DATOS EXISTENTES
             ),
           ),
         );
         break;
 
-      // ✅ CASO AGREGADO PARA SITUACIÓN DIDÁCTICA EN EDICIÓN
       case "Situacion Didactica":
         Navigator.push(
           context,
@@ -656,6 +724,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
               seleccionGrados: seleccionGrados,
               isEditing: true,
               planeacionId: planeacionId,
+              existingData: existingData, // ✅ PASAR DATOS EXISTENTES
             ),
           ),
         );

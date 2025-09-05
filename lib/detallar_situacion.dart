@@ -10,8 +10,9 @@ class DetallarSituacionPage extends StatefulWidget {
   final List<Map<String, dynamic>> seleccionGrados;
   final bool isEditing;
   final String? planeacionId;
-  final Map<String, dynamic>? draftData; // ✅ NUEVO PARÁMETRO
-  final String? draftId; // ✅ NUEVO PARÁMETRO
+  final Map<String, dynamic>? draftData;
+  final String? draftId;
+  final Map<String, dynamic>? existingData; // ✅ NUEVO PARÁMETRO
 
   const DetallarSituacionPage({
     super.key,
@@ -21,8 +22,9 @@ class DetallarSituacionPage extends StatefulWidget {
     required this.seleccionGrados,
     this.isEditing = false,
     this.planeacionId,
-    this.draftData, // ✅ NUEVO PARÁMETRO
-    this.draftId, // ✅ NUEVO PARÁMETRO
+    this.draftData,
+    this.draftId,
+    this.existingData, // ✅ NUEVO PARÁMETRO
   });
 
   @override
@@ -74,8 +76,10 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
 
     _fadeAnimationController.forward();
 
-    // ✅ NUEVO: Cargar datos del borrador si existe
-    if (widget.draftData != null && !isDraftLoaded) {
+    // ✅ MODIFICADO: Priorizar existingData sobre draftData
+    if (widget.existingData != null) {
+      _loadExistingData();
+    } else if (widget.draftData != null && !isDraftLoaded) {
       _loadDraftData();
     } else if (widget.isEditing && widget.planeacionId != null) {
       _cargarDatosExistentes();
@@ -97,7 +101,105 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
     super.dispose();
   }
 
-  // ✅ NUEVA FUNCIÓN: Cargar datos del borrador
+  // ✅ NUEVA FUNCIÓN: Cargar datos existentes pasados desde planeaciones_list_page
+  void _loadExistingData() {
+    try {
+      print('📋 Cargando datos existentes en Situación Didáctica...');
+      final data = widget.existingData!;
+
+      setState(() {
+        // Cargar datos básicos
+        propositoController.text = data['proposito'] ?? '';
+        relevanciaController.text = data['relevancia_social'] ?? '';
+
+        // Cargar fechas desde periodo_aplicacion si existe
+        if (data['periodo_aplicacion'] != null) {
+          String periodo = data['periodo_aplicacion'].toString();
+          _parseFechasFromPeriodo(periodo);
+        }
+
+        // Cargar momentos específicos de Situación Didáctica
+        if (data['momentos'] != null) {
+          final momentos = Map<String, dynamic>.from(data['momentos']);
+          inicioController.text = momentos['inicio'] ?? '';
+          desarrolloController.text = momentos['desarrollo'] ?? '';
+          cierreController.text = momentos['cierre'] ?? '';
+          variantesController.text = momentos['posibles_variantes'] ?? '';
+        }
+
+        // Cargar listas
+        if (data['materiales'] != null) {
+          materiales.clear();
+          materiales.addAll(List<String>.from(data['materiales']));
+        }
+        if (data['espacios'] != null) {
+          espacios.clear();
+          espacios.addAll(List<String>.from(data['espacios']));
+        }
+        if (data['produccion_sugerida'] != null) {
+          produccion.clear();
+          produccion.addAll(List<String>.from(data['produccion_sugerida']));
+        }
+      });
+
+      isDraftLoaded = true;
+      print('✅ Datos existentes cargados en Situación Didáctica');
+    } catch (e) {
+      print('❌ Error cargando datos existentes en Situación Didáctica: $e');
+      isDraftLoaded = true;
+    }
+  }
+
+  // ✅ FUNCIÓN AUXILIAR: Parsear fechas desde el texto del periodo
+  void _parseFechasFromPeriodo(String periodo) {
+    try {
+      // Ejemplo de periodo: "15 de marzo de 2024 - 30 de abril de 2024"
+      final partes = periodo.split(' - ');
+      if (partes.length == 2) {
+        fechaInicio = _parseFechaTexto(partes[0].trim());
+        fechaFin = _parseFechaTexto(partes[1].trim());
+      }
+    } catch (e) {
+      print('Error parseando fechas del periodo: $e');
+    }
+  }
+
+  // ✅ FUNCIÓN AUXILIAR: Parsear una fecha individual
+  DateTime? _parseFechaTexto(String fechaTexto) {
+    try {
+      // Ejemplo: "15 de marzo de 2024"
+      final meses = {
+        'enero': 1,
+        'febrero': 2,
+        'marzo': 3,
+        'abril': 4,
+        'mayo': 5,
+        'junio': 6,
+        'julio': 7,
+        'agosto': 8,
+        'septiembre': 9,
+        'octubre': 10,
+        'noviembre': 11,
+        'diciembre': 12
+      };
+
+      final partes = fechaTexto.split(' de ');
+      if (partes.length == 3) {
+        final dia = int.tryParse(partes[0]);
+        final mesNombre = partes[1].toLowerCase();
+        final anio = int.tryParse(partes[2]);
+
+        if (dia != null && anio != null && meses.containsKey(mesNombre)) {
+          return DateTime(anio, meses[mesNombre]!, dia);
+        }
+      }
+    } catch (e) {
+      print('Error parseando fecha individual: $e');
+    }
+    return null;
+  }
+
+  // ✅ FUNCIÓN EXISTENTE: Cargar datos del borrador
   void _loadDraftData() {
     try {
       print('📋 Cargando datos del borrador en Situación Didáctica...');
@@ -156,7 +258,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
     }
   }
 
-  // ✅ NUEVA FUNCIÓN: Guardar borrador
+  // ✅ FUNCIÓN EXISTENTE: Guardar borrador
   Future<void> _saveDraft() async {
     final draftData = {
       'titulo': widget.titulo,
@@ -185,7 +287,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
         modalidad: 'Situación Didáctica',
         data: draftData,
         draftId: currentDraftId,
-        tipoPagina: 'modalidad', // ✅ NUEVO: Especificar tipo de página
+        tipoPagina: 'modalidad',
       );
 
       if (savedDraftId != null && currentDraftId == null) {
@@ -209,6 +311,12 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
         setState(() {
           propositoController.text = data['proposito'] ?? '';
           relevanciaController.text = data['relevancia_social'] ?? '';
+
+          // Cargar fechas desde periodo_aplicacion si existe
+          if (data['periodo_aplicacion'] != null) {
+            String periodo = data['periodo_aplicacion'].toString();
+            _parseFechasFromPeriodo(periodo);
+          }
 
           if (data['momentos'] != null) {
             final momentos = data['momentos'] as Map<String, dynamic>;
@@ -267,6 +375,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
     return '${format(fechaInicio!)} - ${format(fechaFin!)}';
   }
 
+  // ✅ FUNCIÓN MODIFICADA: Mejorar guardarDetalleSituacion
   Future<void> guardarDetalleSituacion() async {
     final Map<String, dynamic> data = {
       "titulo": widget.titulo,
@@ -288,46 +397,66 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
       "fecha_creacion": FieldValue.serverTimestamp(),
     };
 
-    if (widget.isEditing && widget.planeacionId != null) {
-      await FirebaseFirestore.instance
-          .collection('detalles_situacion')
-          .doc(widget.planeacionId)
-          .update(data);
+    try {
+      if (widget.isEditing && widget.planeacionId != null) {
+        // ✅ MODO EDICIÓN: Actualizar documento existente
+        await FirebaseFirestore.instance
+            .collection('detalles_situacion')
+            .doc(widget.planeacionId)
+            .set(data, SetOptions(merge: false));
 
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              '¡Detalle actualizado correctamente!',
+              style: TextStyle(fontFamily: 'ComicNeue'),
+            ),
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      } else {
+        // ✅ MODO CREACIÓN: Crear nuevo documento
+        DocumentReference docRef = await FirebaseFirestore.instance
+            .collection('detalles_situacion')
+            .add(data);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              '¡Detalle guardado correctamente!',
+              style: TextStyle(fontFamily: 'ComicNeue'),
+            ),
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
+        print('✅ Nuevo documento creado con ID: ${docRef.id}');
+      }
+
+      // ✅ MARCAR BORRADOR COMO COMPLETADO
+      if (currentDraftId != null) {
+        await DraftService.markAsCompleted(currentDraftId!);
+      }
+    } catch (e) {
+      print('❌ Error guardando detalle de situación: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-            '¡Detalle actualizado correctamente!',
-            style: TextStyle(fontFamily: 'ComicNeue'),
+          content: Text(
+            'Error al guardar: $e',
+            style: const TextStyle(fontFamily: 'ComicNeue'),
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.red,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
         ),
       );
-    } else {
-      await FirebaseFirestore.instance
-          .collection('detalles_situacion')
-          .add(data);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            '¡Detalle guardado correctamente!',
-            style: TextStyle(fontFamily: 'ComicNeue'),
-          ),
-          backgroundColor: Colors.green,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-    }
-
-    // ✅ NUEVO: Marcar borrador como completado
-    if (currentDraftId != null) {
-      await DraftService.markAsCompleted(currentDraftId!);
     }
   }
 
@@ -353,8 +482,8 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
           camposFormativos: widget.campus,
           contenidos: _getContenidos(),
           procesosDesarrollo: widget.seleccionGrados,
-          relacionContenidos: {}, // Sin relación de contenidos
-          ejeArticulador: '', // Sin eje articulador
+          relacionContenidos: {},
+          ejeArticulador: '',
           momentos: momentos,
           posiblesVariantes: variantesController.text,
           materiales: materiales,
@@ -398,7 +527,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
                                     ? 'Editar Situación'
                                     : 'Situación Didáctica',
                                 style: const TextStyle(
-                                  fontSize: 22, // ✅ CAMBIAR: de 26 a 22
+                                  fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                   fontFamily: 'ComicNeue',
@@ -415,10 +544,13 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
                               if (widget.draftData != null) ...[
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1), // ✅ CAMBIAR: de 4 a 3
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 3,
+                                      vertical: 1), // ✅ CAMBIAR: de 4 a 3
                                   decoration: BoxDecoration(
                                     color: Colors.orange,
-                                    borderRadius: BorderRadius.circular(4), // ✅ CAMBIAR: de 6 a 4
+                                    borderRadius: BorderRadius.circular(
+                                        4), // ✅ CAMBIAR: de 6 a 4
                                   ),
                                   child: const Text(
                                     'BORRADOR',
@@ -480,7 +612,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
                                 fechaInicio,
                                 (picked) {
                                   setState(() => fechaInicio = picked);
-                                  _saveDraft(); // ✅ NUEVO: Auto-guardar
+                                  _saveDraft();
                                 },
                                 'Inicio',
                               ),
@@ -492,7 +624,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
                                 fechaFin,
                                 (picked) {
                                   setState(() => fechaFin = picked);
-                                  _saveDraft(); // ✅ NUEVO: Auto-guardar
+                                  _saveDraft();
                                 },
                                 'Cierre',
                               ),
@@ -764,7 +896,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
           minLines: 1,
           maxLines: 4,
           style: const TextStyle(fontFamily: 'ComicNeue'),
-          onChanged: (value) => _saveDraft(), // ✅ NUEVO: Auto-guardar
+          onChanged: (value) => _saveDraft(),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(fontFamily: 'ComicNeue'),
@@ -906,7 +1038,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
                     ),
                     onPressed: () {
                       setState(() => lista.remove(e));
-                      _saveDraft(); // ✅ NUEVO: Auto-guardar
+                      _saveDraft();
                     },
                   )
                 ],
@@ -943,7 +1075,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
                       lista.add(v.trim());
                       controller.clear();
                     });
-                    _saveDraft(); // ✅ NUEVO: Auto-guardar
+                    _saveDraft();
                   }
                 },
               ),
@@ -959,7 +1091,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
                     lista.add(controller.text.trim());
                     controller.clear();
                   });
-                  _saveDraft(); // ✅ NUEVO: Auto-guardar
+                  _saveDraft();
                 }
               },
             )

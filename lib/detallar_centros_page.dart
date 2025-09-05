@@ -10,8 +10,9 @@ class DetallarCentrosInteresPage extends StatefulWidget {
   final List<Map<String, dynamic>> seleccionGrados;
   final bool isEditing;
   final String? planeacionId;
-  final Map<String, dynamic>? draftData; // ✅ NUEVO PARÁMETRO
-  final String? draftId; // ✅ NUEVO PARÁMETRO
+  final Map<String, dynamic>? draftData;
+  final String? draftId;
+  final Map<String, dynamic>? existingData; // ✅ NUEVO PARÁMETRO
 
   const DetallarCentrosInteresPage({
     super.key,
@@ -21,8 +22,9 @@ class DetallarCentrosInteresPage extends StatefulWidget {
     required this.seleccionGrados,
     this.isEditing = false,
     this.planeacionId,
-    this.draftData, // ✅ NUEVO PARÁMETRO
-    this.draftId, // ✅ NUEVO PARÁMETRO
+    this.draftData,
+    this.draftId,
+    this.existingData, // ✅ NUEVO PARÁMETRO
   });
 
   @override
@@ -64,7 +66,6 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
 
   final Map<String, TextEditingController> relacionPorCampo = {};
 
-  // ✅ NUEVO: Variables para el sistema de borradores
   String? currentDraftId;
   bool isDraftLoaded = false;
 
@@ -75,7 +76,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
   void initState() {
     super.initState();
     
-    currentDraftId = widget.draftId; // ✅ NUEVO
+    currentDraftId = widget.draftId;
     
     _fadeAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
@@ -92,8 +93,10 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
       relacionPorCampo[campo] = TextEditingController();
     }
     
-    // ✅ NUEVO: Cargar datos del borrador si existe
-    if (widget.draftData != null && !isDraftLoaded) {
+    // ✅ MODIFICADO: Priorizar existingData sobre draftData
+    if (widget.existingData != null) {
+      _loadExistingData();
+    } else if (widget.draftData != null && !isDraftLoaded) {
       _loadDraftData();
     } else if (widget.isEditing && widget.planeacionId != null) {
       _cargarDatosExistentes();
@@ -119,7 +122,107 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
     super.dispose();
   }
 
-  // ✅ NUEVA FUNCIÓN: Cargar datos del borrador
+  // ✅ NUEVA FUNCIÓN: Cargar datos existentes pasados desde planeaciones_list_page
+  void _loadExistingData() {
+    try {
+      print('📋 Cargando datos existentes en Centros de Interés...');
+      final data = widget.existingData!;
+
+      setState(() {
+        // Cargar datos básicos
+        propositoController.text = data['proposito'] ?? '';
+        relevanciaController.text = data['relevancia_social'] ?? '';
+        ejeSeleccionado = data['eje_articulador'];
+
+        // Cargar fechas desde periodo_aplicacion si existe
+        if (data['periodo_aplicacion'] != null) {
+          String periodo = data['periodo_aplicacion'].toString();
+          _parseFechasFromPeriodo(periodo);
+        }
+
+        // Cargar momentos específicos de Centros de Interés
+        if (data['momentos'] != null) {
+          final momentos = Map<String, dynamic>.from(data['momentos']);
+          contactoRealidadController.text = momentos['contacto_realidad'] ?? '';
+          identificacionIntegracionController.text = momentos['identificacion_integracion'] ?? '';
+          expresionController.text = momentos['expresion'] ?? '';
+          variantesController.text = momentos['posibles_variantes'] ?? '';
+        }
+
+        // Cargar listas
+        if (data['materiales'] != null) {
+          materiales.clear();
+          materiales.addAll(List<String>.from(data['materiales']));
+        }
+        if (data['espacios'] != null) {
+          espacios.clear();
+          espacios.addAll(List<String>.from(data['espacios']));
+        }
+        if (data['produccion_sugerida'] != null) {
+          produccion.clear();
+          produccion.addAll(List<String>.from(data['produccion_sugerida']));
+        }
+
+        // Cargar relación de contenidos
+        if (data['relacion_contenidos'] != null) {
+          final relaciones = Map<String, dynamic>.from(data['relacion_contenidos']);
+          relaciones.forEach((campo, texto) {
+            if (relacionPorCampo[campo] != null) {
+              relacionPorCampo[campo]!.text = texto ?? '';
+            }
+          });
+        }
+      });
+
+      isDraftLoaded = true;
+      print('✅ Datos existentes cargados en Centros de Interés');
+    } catch (e) {
+      print('❌ Error cargando datos existentes en Centros de Interés: $e');
+      isDraftLoaded = true;
+    }
+  }
+
+  // ✅ FUNCIÓN AUXILIAR: Parsear fechas desde el texto del periodo
+  void _parseFechasFromPeriodo(String periodo) {
+    try {
+      // Ejemplo de periodo: "15 de marzo de 2024 - 30 de abril de 2024"
+      final partes = periodo.split(' - ');
+      if (partes.length == 2) {
+        fechaInicio = _parseFechaTexto(partes[0].trim());
+        fechaFin = _parseFechaTexto(partes[1].trim());
+      }
+    } catch (e) {
+      print('Error parseando fechas del periodo: $e');
+    }
+  }
+
+  // ✅ FUNCIÓN AUXILIAR: Parsear una fecha individual
+  DateTime? _parseFechaTexto(String fechaTexto) {
+    try {
+      // Ejemplo: "15 de marzo de 2024"
+      final meses = {
+        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
+        'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
+        'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+      };
+      
+      final partes = fechaTexto.split(' de ');
+      if (partes.length == 3) {
+        final dia = int.tryParse(partes[0]);
+        final mesNombre = partes[1].toLowerCase();
+        final anio = int.tryParse(partes[2]);
+        
+        if (dia != null && anio != null && meses.containsKey(mesNombre)) {
+          return DateTime(anio, meses[mesNombre]!, dia);
+        }
+      }
+    } catch (e) {
+      print('Error parseando fecha individual: $e');
+    }
+    return null;
+  }
+
+  // ✅ FUNCIÓN EXISTENTE: Cargar datos del borrador
   void _loadDraftData() {
     try {
       print('📋 Cargando datos del borrador en Centros de Interés...');
@@ -190,7 +293,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
     }
   }
 
-  // ✅ NUEVA FUNCIÓN: Guardar borrador
+  // ✅ FUNCIÓN EXISTENTE: Guardar borrador
   Future<void> _saveDraft() async {
     final draftData = {
       'titulo': widget.titulo,
@@ -224,7 +327,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
         modalidad: 'Centros de interés',
         data: draftData,
         draftId: currentDraftId,
-        tipoPagina: 'modalidad', // ✅ NUEVO: Especificar tipo de página
+        tipoPagina: 'modalidad',
       );
       
       if (savedDraftId != null && currentDraftId == null) {
@@ -249,6 +352,12 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
           propositoController.text = data['proposito'] ?? '';
           relevanciaController.text = data['relevancia_social'] ?? '';
           ejeSeleccionado = data['eje_articulador'];
+
+          // Cargar fechas desde periodo_aplicacion si existe
+          if (data['periodo_aplicacion'] != null) {
+            String periodo = data['periodo_aplicacion'].toString();
+            _parseFechasFromPeriodo(periodo);
+          }
           
           if (data['momentos'] != null) {
             final momentos = data['momentos'] as Map<String, dynamic>;
@@ -306,6 +415,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
     return '${format(fechaInicio!)} - ${format(fechaFin!)}';
   }
 
+  // ✅ FUNCIÓN MODIFICADA: Mejorar guardarDetalleCentrosInteres
   Future<void> guardarDetalleCentrosInteres() async {
     final Map<String, dynamic> data = {
       "titulo": widget.titulo,
@@ -332,46 +442,66 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
       "fecha_creacion": FieldValue.serverTimestamp(),
     };
 
-    if (widget.isEditing && widget.planeacionId != null) {
-      await FirebaseFirestore.instance
-          .collection('detalles_centros_interes')
-          .doc(widget.planeacionId)
-          .update(data);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            '¡Detalle actualizado correctamente!',
-            style: TextStyle(fontFamily: 'ComicNeue'),
+    try {
+      if (widget.isEditing && widget.planeacionId != null) {
+        // ✅ MODO EDICIÓN: Actualizar documento existente
+        await FirebaseFirestore.instance
+            .collection('detalles_centros_interes')
+            .doc(widget.planeacionId)
+            .set(data, SetOptions(merge: false));
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              '¡Detalle actualizado correctamente!',
+              style: TextStyle(fontFamily: 'ComicNeue'),
+            ),
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          backgroundColor: Colors.green,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+        );
+      } else {
+        // ✅ MODO CREACIÓN: Crear nuevo documento
+        DocumentReference docRef = await FirebaseFirestore.instance
+            .collection('detalles_centros_interes')
+            .add(data);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              '¡Detalle guardado correctamente!',
+              style: TextStyle(fontFamily: 'ComicNeue'),
+            ),
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
-    } else {
-      await FirebaseFirestore.instance
-          .collection('detalles_centros_interes')
-          .add(data);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            '¡Detalle guardado correctamente!',
-            style: TextStyle(fontFamily: 'ComicNeue'),
-          ),
-          backgroundColor: Colors.green,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-    }
+        );
 
-    // ✅ NUEVO: Marcar borrador como completado
-    if (currentDraftId != null) {
-      await DraftService.markAsCompleted(currentDraftId!);
+        print('✅ Nuevo documento creado con ID: ${docRef.id}');
+      }
+
+      // ✅ MARCAR BORRADOR COMO COMPLETADO
+      if (currentDraftId != null) {
+        await DraftService.markAsCompleted(currentDraftId!);
+      }
+    } catch (e) {
+      print('❌ Error guardando detalle de centros de interés: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error al guardar: $e',
+            style: const TextStyle(fontFamily: 'ComicNeue'),
+          ),
+          backgroundColor: Colors.red,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
     }
   }
 
@@ -463,16 +593,16 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
                               if (widget.draftData != null) ...[
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                                   decoration: BoxDecoration(
                                     color: Colors.orange,
-                                    borderRadius: BorderRadius.circular(6),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Text(
                                     'BORRADOR',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 8,
+                                      fontSize: 7,
                                       fontWeight: FontWeight.bold,
                                       fontFamily: 'ComicNeue',
                                     ),
@@ -529,7 +659,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
                                 fechaInicio,
                                 (picked) {
                                   setState(() => fechaInicio = picked);
-                                  _saveDraft(); // ✅ NUEVO: Auto-guardar
+                                  _saveDraft();
                                 },
                                 'Inicio',
                               ),
@@ -541,7 +671,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
                                 fechaFin,
                                 (picked) {
                                   setState(() => fechaFin = picked);
-                                  _saveDraft(); // ✅ NUEVO: Auto-guardar
+                                  _saveDraft();
                                 },
                                 'Cierre',
                               ),
@@ -608,7 +738,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
                                 minLines: 1,
                                 maxLines: 4,
                                 style: const TextStyle(fontFamily: 'ComicNeue'),
-                                onChanged: (value) => _saveDraft(), // ✅ NUEVO: Auto-guardar
+                                onChanged: (value) => _saveDraft(),
                                 decoration: InputDecoration(
                                   hintText: 'Describe la relación para $campo...',
                                   hintStyle: const TextStyle(fontFamily: 'ComicNeue'),
@@ -662,7 +792,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
                               .toList(),
                           onChanged: (v) {
                             setState(() => ejeSeleccionado = v);
-                            _saveDraft(); // ✅ NUEVO: Auto-guardar
+                            _saveDraft();
                           },
                           style: const TextStyle(
                             fontFamily: 'ComicNeue',
@@ -909,7 +1039,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
           minLines: 1,
           maxLines: 4,
           style: const TextStyle(fontFamily: 'ComicNeue'),
-          onChanged: (value) => _saveDraft(), // ✅ NUEVO: Auto-guardar
+          onChanged: (value) => _saveDraft(),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(fontFamily: 'ComicNeue'),
@@ -1047,7 +1177,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
                     ),
                     onPressed: () {
                       setState(() => lista.remove(e));
-                      _saveDraft(); // ✅ NUEVO: Auto-guardar
+                      _saveDraft();
                     },
                   )
                 ],
@@ -1081,7 +1211,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
                       lista.add(v.trim());
                       controller.clear();
                     });
-                    _saveDraft(); // ✅ NUEVO: Auto-guardar
+                    _saveDraft();
                   }
                 },
               ),
@@ -1097,7 +1227,7 @@ class _DetallarCentrosInteresPageState extends State<DetallarCentrosInteresPage>
                     lista.add(controller.text.trim());
                     controller.clear();
                   });
-                  _saveDraft(); // ✅ NUEVO: Auto-guardar
+                  _saveDraft();
                 }
               },
             )
