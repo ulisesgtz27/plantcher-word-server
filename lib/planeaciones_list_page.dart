@@ -391,6 +391,7 @@ class _PlaneacionesListPageState extends State<PlaneacionesListPage>
 
       // ✅ CASO AGREGADO PARA SITUACIÓN DIDÁCTICA
       case 'situacion didactica':
+      case 'situación didáctica':
         print('📝 Navegando a DetallarSituacionPage');
         Navigator.of(context).push(
           MaterialPageRoute(

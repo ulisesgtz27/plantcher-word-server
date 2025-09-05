@@ -182,7 +182,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
 
     try {
       final savedDraftId = await DraftService.saveDraft(
-        modalidad: 'Situacion Didactica',
+        modalidad: 'Situación Didáctica',
         data: draftData,
         draftId: currentDraftId,
         tipoPagina: 'modalidad', // ✅ NUEVO: Especificar tipo de página
@@ -398,7 +398,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
                                     ? 'Editar Situación'
                                     : 'Situación Didáctica',
                                 style: const TextStyle(
-                                  fontSize: 26,
+                                  fontSize: 22, // ✅ CAMBIAR: de 26 a 22
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                   fontFamily: 'ComicNeue',
@@ -415,17 +415,16 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
                               if (widget.draftData != null) ...[
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 4, vertical: 1),
+                                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1), // ✅ CAMBIAR: de 4 a 3
                                   decoration: BoxDecoration(
                                     color: Colors.orange,
-                                    borderRadius: BorderRadius.circular(6),
+                                    borderRadius: BorderRadius.circular(4), // ✅ CAMBIAR: de 6 a 4
                                   ),
                                   child: const Text(
                                     'BORRADOR',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 8,
+                                      fontSize: 7, // ✅ CAMBIAR: de 8 a 7
                                       fontWeight: FontWeight.bold,
                                       fontFamily: 'ComicNeue',
                                     ),
