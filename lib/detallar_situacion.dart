@@ -182,7 +182,7 @@ class _DetallarSituacionPageState extends State<DetallarSituacionPage>
 
     try {
       final savedDraftId = await DraftService.saveDraft(
-        modalidad: 'Situación Didáctica',
+        modalidad: 'Situacion Didactica',
         data: draftData,
         draftId: currentDraftId,
         tipoPagina: 'modalidad', // ✅ NUEVO: Especificar tipo de página

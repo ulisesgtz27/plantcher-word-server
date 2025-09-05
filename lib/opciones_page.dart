@@ -8,7 +8,7 @@ import 'detallar_taller.dart';
 import 'detallar_proyecto.dart';
 import 'detallar_unidad.dart';
 import 'detallar_rincones.dart';
-import 'detallar_situacion.dart'; // ✅ NUEVO IMPORT
+import 'detallar_situacion.dart'; 
 
 class OpcionesPage extends StatefulWidget {
   final Map<String, dynamic>? draftData;
@@ -703,7 +703,7 @@ class _OpcionesPageState extends State<OpcionesPage>
                                           ),
                                         );
                                       } else if (modalidadSeleccionada ==
-                                          "Situación Didáctica") { // ✅ NUEVO CASE
+                                          "Situacion Didactica") { // ✅ NUEVO CASE
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(

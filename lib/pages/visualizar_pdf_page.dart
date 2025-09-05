@@ -16,6 +16,7 @@ import '../pdf_formats/pdf_format_proyecto.dart';
 import '../pdf_formats/pdf_format_rincones.dart';
 import '../pdf_formats/pdf_format_taller.dart';
 import '../pdf_formats/pdf_format_unidad.dart';
+import '../pdf_formats/pdf_format_situacion.dart';
 import '../planeaciones_list_page.dart';
 
 class VisualizarPDFPage extends StatefulWidget {
@@ -132,6 +133,7 @@ class _VisualizarPDFPageState extends State<VisualizarPDFPage>
     switch (widget.modalidad.toLowerCase()) {
       case 'abj':
       case 'aprendizaje basado en juegos':
+      case 'aprendizaje basado en el juego':
         pdfDoc = buildAbjPDF(
           titulo: widget.titulo,
           periodoAplicacion: widget.periodoAplicacion,
@@ -238,6 +240,24 @@ class _VisualizarPDFPageState extends State<VisualizarPDFPage>
           procesosDesarrollo: widget.procesosDesarrollo,
           relacionContenidos: widget.relacionContenidos,
           ejeArticulador: widget.ejeArticulador,
+          momentos: widget.momentos,
+          posiblesVariantes: widget.posiblesVariantes,
+          materiales: widget.materiales,
+          espacios: widget.espacios,
+        );
+        break;
+
+      case 'situacion didactica':
+      case 'situación didáctica':
+        pdfDoc = buildSituacionPDF(
+          titulo: widget.titulo,
+          periodoAplicacion: widget.periodoAplicacion,
+          proposito: widget.proposito,
+          relevanciaSocial: widget.relevanciaSocial,
+          produccionSugerida: widget.produccionSugerida,
+          camposFormativos: widget.camposFormativos,
+          contenidos: widget.contenidos,
+          procesosDesarrollo: widget.procesosDesarrollo,
           momentos: widget.momentos,
           posiblesVariantes: widget.posiblesVariantes,
           materiales: widget.materiales,
