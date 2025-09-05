@@ -352,7 +352,7 @@ class _OpcionesPageState extends State<OpcionesPage>
                               const Text(
                                 'Nueva Planeación',
                                 style: TextStyle(
-                                  fontSize: 28,
+                                  fontSize: 24, // ✅ CAMBIAR: de 28 a 24
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                   fontFamily: 'ComicNeue',
